@@ -31,7 +31,7 @@ import (
 	"os"
 	"strings"
 
-	decimal "github.com/USER/decimaljs-go/src"
+	decimal "github.com/ishadowfighter/decimaljs-go/src"
 )
 
 // maxLine bounds a single request. decimal.js accepts operands with a million
@@ -227,6 +227,8 @@ var ops = map[string]operation{
 		}
 		return encode(r, g), nil
 	}},
+
+	"sqrt": {1, decimalUnary((*decimal.Context).Sqrt)},
 
 	// Sign and whole-number rounding.
 	"abs":   {1, decimalUnary((*decimal.Context).Abs)},

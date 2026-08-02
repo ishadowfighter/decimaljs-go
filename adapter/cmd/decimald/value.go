@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	decimal "github.com/USER/decimaljs-go/src"
+	decimal "github.com/ishadowfighter/decimaljs-go/src"
 )
 
 // JSON cannot spell the four JavaScript numbers the suite cares most about, so

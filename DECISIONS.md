@@ -45,11 +45,11 @@ The port is MIT, and the original decimal.js MIT notice is reproduced in
 derivative of upstream, so dropping the original notice would not be
 permissible; adding it once at the top level is cleaner than a per-file header.
 
-## D4 — Module path is a placeholder
+## D4 — Module path
 
-`go.mod` declares `github.com/USER/decimaljs-go`. Guessing an account name into
-a committed file is worse than an obviously-unfilled placeholder, so the owning
-account is left for the repository owner to substitute.
+`go.mod` declares `github.com/ishadowfighter/decimaljs-go`. It was carried as a
+placeholder until the owning account was confirmed, rather than guessed at, so
+that no wrong identifier ever landed in a commit.
 
 ## D5 — Configuration is a value, not global mutable state
 

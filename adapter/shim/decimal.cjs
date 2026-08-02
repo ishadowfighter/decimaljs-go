@@ -184,6 +184,7 @@ function clone(settings) {
   P.modulo = P.mod = arithmetic('mod');
   P.toPower = P.pow = arithmetic('pow');
 
+  P.squareRoot = P.sqrt = transform('sqrt');
   P.absoluteValue = P.abs = transform('abs');
   P.negated = P.neg = transform('neg');
   P.round = transform('round');
@@ -260,7 +261,7 @@ function clone(settings) {
     Decimal[pair[0]] = function (x, y) { return new Decimal(x)[pair[1]](y); };
   });
 
-  ['abs', 'floor', 'ceil', 'round', 'trunc'].forEach(function (name) {
+  ['abs', 'floor', 'ceil', 'round', 'trunc', 'sqrt'].forEach(function (name) {
     Decimal[name] = function (x) { return new Decimal(x)[name](); };
   });
 
@@ -430,7 +431,6 @@ const UNIMPLEMENTED_METHODS = [
   'naturalExponential', 'exp',
   'naturalLogarithm', 'ln',
   'sine', 'sin',
-  'squareRoot', 'sqrt',
   'tangent', 'tan',
   'toFraction',
 ];
@@ -440,7 +440,7 @@ const UNIMPLEMENTED_STATICS = [
   'acos', 'acosh', 'asin', 'asinh', 'atan', 'atanh', 'atan2',
   'cbrt', 'cos', 'cosh', 'exp', 'hypot',
   'ln', 'log', 'log2', 'log10',
-  'sin', 'sinh', 'sqrt', 'tan', 'tanh',
+  'sin', 'sinh', 'tan', 'tanh',
 ];
 
 // One prototype object is shared by every cloned constructor, as in decimal.js,
