@@ -1,7 +1,6 @@
 package decimal
 
 import (
-	"fmt"
 	"math"
 	"strconv"
 	"strings"
@@ -273,9 +272,7 @@ func (c *Context) Parse(s string) (Decimal, error) {
 		}
 	}
 
-	// Hexadecimal, binary and octal literals are accepted by decimal.js and
-	// are not ported yet; they are rejected here rather than mis-parsed.
-	return Decimal{}, fmt.Errorf("%w: %s", ErrInvalidArgument, s)
+	return parseRadixLiteral(sign, s, c.config)
 }
 
 // NewFromFloat returns the Decimal equal to the shortest decimal representation
