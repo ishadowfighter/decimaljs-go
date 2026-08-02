@@ -1,2 +1,28 @@
-decimal.js
+# Reference clone of the original library, kept locally for reading and for
+# differential runs. Not part of this repository.
+/decimal.js
+
+# Local working notes.
 AGENTS.md
+
+# Go
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+/bin/
+/dist/
+vendor/
+
+# Node (adapter harness)
+node_modules/
+npm-debug.log*
+
+# Python (differential fuzzing)
+.venv/
+__pycache__/
+*.py[cod]
+.hypothesis/
+.pytest_cache/
