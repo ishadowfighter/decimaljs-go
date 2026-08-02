@@ -21,6 +21,13 @@ assertions_total = 22658
 assertions_passing = 22658
 
 [kickoff]
-# Hash published by the organisers at the start of the window.
-# Replace the placeholder with the announced value.
-hash = "REPLACE_WITH_ANNOUNCED_KICKOFF_HASH"
+# The kickoff hash of the original test suite: the SHA-256 of
+# tests/original/HASHES.txt, which itself lists a SHA-256 for each of the 69
+# vendored files. Hashing the manifest pins every file with one value, and
+# anyone can recompute it:
+#
+#   cd tests/original && sha256sum -c HASHES.txt && cd - && sha256sum tests/original/HASHES.txt
+#
+hash = "35d804181f52e2fe6648ace3cd8eca15789ba70dbe800356548dc975d54bd7d5"
+hash_of = "tests/original/HASHES.txt"
+files_hashed = 69
