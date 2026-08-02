@@ -78,14 +78,17 @@ function isDecimalInstance(v) {
 function clone(settings) {
   function Decimal(value) {
     if (!(this instanceof Decimal)) return new Decimal(value);
+    // decimal.js stamps the constructor on the instance, not the prototype,
+    // because every constructor it clones shares one prototype object.
+    this.constructor = Decimal;
     const state = call(Decimal, 'new', [operand(value)]);
     this.d = state.d;
     this.e = decodeNumber(state.e);
     this.s = decodeNumber(state.s);
   }
 
-  const P = Decimal.prototype;
-  P.constructor = Decimal;
+  const P = SHARED_PROTOTYPE;
+  Decimal.prototype = P;
   P.toStringTag = TAG;
 
   // -- Settings ------------------------------------------------------------
@@ -131,8 +134,8 @@ function clone(settings) {
       inherited[key] = obj && obj.defaults === true ? DEFAULTS[key] : Decimal[key];
     });
     const child = clone(inherited);
-    if (obj) child.set(obj);
-    return child;
+    // A null argument reaches set and is rejected there, as it is upstream.
+    return child.set(obj === undefined ? {} : obj);
   };
 
   // -- Implemented instance methods ---------------------------------------
@@ -263,6 +266,10 @@ function clone(settings) {
 
   Decimal.clamp = function (x, min, max) { return new Decimal(x).clamp(min, max); };
 
+  Decimal.random = function (sd) {
+    return fromState(Decimal, call(Decimal, 'random', [sd === undefined ? 'absent' : sd]));
+  };
+
   ['max', 'min', 'sum'].forEach(function (name) {
     Decimal[name] = function () {
       const args = Array.prototype.slice.call(arguments).map(operand);
@@ -335,6 +342,7 @@ function build(Ctor, op, args) {
 // the constructor, which would re-parse it and lose the sign of -0.
 function fromState(Ctor, state) {
   const x = Object.create(Ctor.prototype);
+  x.constructor = Ctor;
   x.d = state.d;
   x.e = decodeNumber(state.e);
   x.s = decodeNumber(state.s);
@@ -431,8 +439,12 @@ const UNIMPLEMENTED_METHODS = [
 const UNIMPLEMENTED_STATICS = [
   'acos', 'acosh', 'asin', 'asinh', 'atan', 'atanh', 'atan2',
   'cbrt', 'cos', 'cosh', 'exp', 'hypot',
-  'ln', 'log', 'log2', 'log10', 'random',
+  'ln', 'log', 'log2', 'log10',
   'sin', 'sinh', 'sqrt', 'tan', 'tanh',
 ];
+
+// One prototype object is shared by every cloned constructor, as in decimal.js,
+// where `Decimal.prototype === Decimal.clone().prototype` is asserted directly.
+const SHARED_PROTOTYPE = {};
 
 module.exports = clone(DEFAULTS);

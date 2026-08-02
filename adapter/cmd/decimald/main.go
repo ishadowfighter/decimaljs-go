@@ -295,6 +295,21 @@ var ops = map[string]operation{
 	"toOctal":  {3, baseOp((*decimal.Context).ToOctal)},
 	"toHex":    {3, baseOp((*decimal.Context).ToHexadecimal)},
 
+	"random": {1, func(c *decimal.Context, g decimal.Config, a []json.RawMessage) (any, error) {
+		sd, err := digitCountArg(a[0])
+		if err != nil {
+			return nil, err
+		}
+		if sd == absentArg {
+			sd = 0
+		}
+		r, err := c.Random(sd)
+		if err != nil {
+			return nil, err
+		}
+		return encode(r, g), nil
+	}},
+
 	// Digit counts. Both report NaN for a non-finite value, as decimal.js does.
 	"dp": {1, unary(func(d decimal.Decimal, _ decimal.Config) (any, error) {
 		if n, ok := d.DecimalPlaces(); ok {
