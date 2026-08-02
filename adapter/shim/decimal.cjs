@@ -185,6 +185,7 @@ function clone(settings) {
   P.toPower = P.pow = arithmetic('pow');
 
   P.squareRoot = P.sqrt = transform('sqrt');
+  P.cubeRoot = P.cbrt = transform('cbrt');
   P.absoluteValue = P.abs = transform('abs');
   P.negated = P.neg = transform('neg');
   P.round = transform('round');
@@ -261,7 +262,7 @@ function clone(settings) {
     Decimal[pair[0]] = function (x, y) { return new Decimal(x)[pair[1]](y); };
   });
 
-  ['abs', 'floor', 'ceil', 'round', 'trunc', 'sqrt'].forEach(function (name) {
+  ['abs', 'floor', 'ceil', 'round', 'trunc', 'sqrt', 'cbrt'].forEach(function (name) {
     Decimal[name] = function (x) { return new Decimal(x)[name](); };
   });
 
@@ -417,7 +418,6 @@ const ROUNDING_MODES = [
 // alias is listed separately because the suite calls both spellings.
 const UNIMPLEMENTED_METHODS = [
   'cosine', 'cos',
-  'cubeRoot', 'cbrt',
   'hyperbolicCosine', 'cosh',
   'hyperbolicSine', 'sinh',
   'hyperbolicTangent', 'tanh',
@@ -438,7 +438,7 @@ const UNIMPLEMENTED_METHODS = [
 // decimal.js's static surface minus config, set, clone, sign and isDecimal.
 const UNIMPLEMENTED_STATICS = [
   'acos', 'acosh', 'asin', 'asinh', 'atan', 'atanh', 'atan2',
-  'cbrt', 'cos', 'cosh', 'exp', 'hypot',
+  'cos', 'cosh', 'exp', 'hypot',
   'ln', 'log', 'log2', 'log10',
   'sin', 'sinh', 'tan', 'tanh',
 ];

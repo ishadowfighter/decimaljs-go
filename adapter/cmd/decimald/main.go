@@ -229,6 +229,7 @@ var ops = map[string]operation{
 	}},
 
 	"sqrt": {1, decimalUnary((*decimal.Context).Sqrt)},
+	"cbrt": {1, decimalUnary((*decimal.Context).Cbrt)},
 
 	// Sign and whole-number rounding.
 	"abs":   {1, decimalUnary((*decimal.Context).Abs)},
