@@ -14,6 +14,7 @@ type binaryCase struct {
 	a, b      string
 	precision int
 	rounding  RoundingMode
+	modulo    ModuloMode
 	wantLimbs []int
 	wantExp   string
 	wantSign  string
@@ -41,21 +42,23 @@ func runBinaryCases(t *testing.T, file string, apply func(c *Context, x, y Decim
 			continue
 		}
 		fields := strings.Split(text, "\t")
-		if len(fields) != 8 {
-			t.Fatalf("%s line %d: got %d fields, want 8", file, line, len(fields))
+		if len(fields) != 9 {
+			t.Fatalf("%s line %d: got %d fields, want 9", file, line, len(fields))
 		}
 		c := binaryCase{
 			op: fields[0], a: fields[1], b: fields[2],
 			precision: atoiTest(t, fields[3]),
 			rounding:  RoundingMode(atoiTest(t, fields[4])),
-			wantLimbs: parseLimbs(t, fields[5]),
-			wantExp:   fields[6],
-			wantSign:  fields[7],
+			modulo:    ModuloMode(atoiTest(t, fields[5])),
+			wantLimbs: parseLimbs(t, fields[6]),
+			wantExp:   fields[7],
+			wantSign:  fields[8],
 		}
 
 		cfg := DefaultConfig()
 		cfg.Precision = c.precision
 		cfg.Rounding = c.rounding
+		cfg.Modulo = c.modulo
 		cfg.ToExpNeg = -9e15
 		cfg.ToExpPos = 9e15
 		ctx := NewContext(cfg)
@@ -71,8 +74,8 @@ func runBinaryCases(t *testing.T, file string, apply func(c *Context, x, y Decim
 
 		got := apply(ctx, x, y)
 		if !matchesExpectation(got, c.wantLimbs, c.wantExp, c.wantSign) {
-			t.Errorf("%s(%s, %s) at precision %d rounding %d = d:%v e:%d s:%d, want d:%v e:%s s:%s",
-				c.op, c.a, c.b, c.precision, c.rounding,
+			t.Errorf("%s(%s, %s) at precision %d rounding %d modulo %d = d:%v e:%d s:%d, want d:%v e:%s s:%s",
+				c.op, c.a, c.b, c.precision, c.rounding, c.modulo,
 				got.Coefficient(), got.Exponent(), got.Sign(),
 				c.wantLimbs, c.wantExp, c.wantSign)
 		}
@@ -135,4 +138,16 @@ func TestAddSubDoNotMutateOperands(t *testing.T) {
 
 func TestMulAgainstOriginal(t *testing.T) {
 	runBinaryCases(t, "times.txt", func(c *Context, x, y Decimal) Decimal { return c.Mul(x, y) })
+}
+
+func TestDivAgainstOriginal(t *testing.T) {
+	runBinaryCases(t, "div.txt", func(c *Context, x, y Decimal) Decimal { return c.Div(x, y) })
+}
+
+func TestDivToIntAgainstOriginal(t *testing.T) {
+	runBinaryCases(t, "divToInt.txt", func(c *Context, x, y Decimal) Decimal { return c.DivToInt(x, y) })
+}
+
+func TestModAgainstOriginal(t *testing.T) {
+	runBinaryCases(t, "mod.txt", func(c *Context, x, y Decimal) Decimal { return c.Mod(x, y) })
 }

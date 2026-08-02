@@ -6,7 +6,7 @@
 //   node tests/port/gen_binary_cases.mjs ../decimal.js/decimal.mjs plus > src/testdata/plus.txt
 //
 // Each output line is:
-//   op<TAB>a<TAB>b<TAB>precision<TAB>rounding<TAB>digits,...<TAB>exponent<TAB>sign
+//   op<TAB>a<TAB>b<TAB>precision<TAB>rounding<TAB>modulo<TAB>digits,...<TAB>exponent<TAB>sign
 // with an empty digits field for a non-finite result, and NaN in the exponent
 // and sign fields where decimal.js stores NaN there.
 
@@ -47,8 +47,16 @@ const configs = [
   { precision: 200, rounding: 4 },
 ];
 
-const out = [];
+// The modulo mode only affects `mod`, so the extra passes are added just for
+// it: 0, 1, 3, 6 and 9 are the modes decimal.js documents as useful.
+const moduloModes = op === 'mod' ? [0, 1, 3, 6, 9] : [1];
+const allConfigs = [];
 for (const cfg of configs) {
+  for (const modulo of moduloModes) allConfigs.push({ ...cfg, modulo });
+}
+
+const out = [];
+for (const cfg of allConfigs) {
   Decimal.set({ ...cfg, defaults: true, toExpNeg: -9e15, toExpPos: 9e15 });
   for (const a of values) {
     for (const b of values) {
@@ -61,7 +69,7 @@ for (const cfg of configs) {
       const d = x.d === null ? '' : x.d.join(',');
       const e = Number.isNaN(x.e) ? 'NaN' : String(x.e);
       const s = Number.isNaN(x.s) ? 'NaN' : String(x.s);
-      out.push([op, a, b, cfg.precision, cfg.rounding, d, e, s].join('\t'));
+      out.push([op, a, b, cfg.precision, cfg.rounding, cfg.modulo, d, e, s].join('\t'));
     }
   }
 }
