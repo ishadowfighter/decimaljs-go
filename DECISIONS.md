@@ -50,3 +50,63 @@ permissible; adding it once at the top level is cleaner than a per-file header.
 `go.mod` declares `github.com/USER/decimaljs-go`. Guessing an account name into
 a committed file is worse than an obviously-unfilled placeholder, so the owning
 account is left for the repository owner to substitute.
+
+## D5 — Configuration is a value, not global mutable state
+
+decimal.js keeps `precision`, `rounding` and the rest on the constructor
+object, and `Decimal.clone()` exists to get an independently configurable one.
+The port makes that explicit: `Config` is a plain struct and a `Context` carries
+one, so `NewContext` is what `clone` was. Package-level functions and the
+methods on `Decimal` use a default context, which keeps the common case short
+and matches the original's global-feeling API.
+
+The original suite mutates the global configuration mid-file
+(`Decimal.rounding = 3`), so the adapter needs a mutable default context to
+present that surface. Keeping the mutability at the adapter boundary rather than
+in the library is the compromise: the port itself has no global that a
+concurrent caller can trip over.
+
+## D6 — Every JavaScript `throw` becomes an error return
+
+decimal.js throws `[DecimalError] Invalid argument` for an out-of-range digit
+count, an unknown rounding mode, or an unparseable string. Those all return an
+error wrapping the exported `Err`, so callers can match with `errors.Is`, and
+the adapter turns them back into thrown errors whose message contains
+`DecimalError` — which is all the original's `assertException` checks.
+
+Operations that cannot fail keep single-value signatures, so `Add`, `Mul` and
+the rest read normally; only the ones with a genuinely invalid input return an
+error.
+
+## D7 — Values are immutable, and the coefficient is copied on the way out
+
+decimal.js mutates its digit arrays freely inside an operation but always on a
+fresh copy of the operands, which is what its 3311-assertion immutability
+module checks. A Go `Decimal` holds a slice, so the same discipline needs care:
+every operation allocates rather than writing through, and `Coefficient()`
+returns a copy so a caller cannot reach in and corrupt a value it was handed.
+
+## D8 — Math.pow's two ECMAScript-only cases are reimplemented
+
+For a non-finite or zero operand, decimal.js falls back to JavaScript's
+`Math.pow` on the values converted to numbers. Go's `math.Pow` follows IEEE 754
+and disagrees with ECMAScript in exactly two places: `pow(1, NaN)` and
+`pow(±1, ±Infinity)` are 1 under IEEE 754 and NaN under ECMAScript. The
+original suite asserts the NaN results, so the port carries a small `jsPow`
+wrapper rather than calling `math.Pow` directly. This is a real behavioural
+difference between the two languages' standard libraries, not a quirk of
+decimal.js.
+
+## D9 — Integer exponents only, for now
+
+`Pow` implements decimal.js's exact path: exponentiation by squaring for an
+integer exponent, including the guard-digit truncation and the trick of
+incrementing the last retained limb when digits were dropped, which keeps the
+truncated value strictly above the true one so the final rounding cannot fall
+the wrong way.
+
+A fractional exponent needs `exp` and `ln`, which are Tier 2 and not ported yet.
+Rather than approximate it, `Pow` returns `ErrNotImplemented`. An exponent
+beyond the exact-integer range does the same, since that path also routes
+through the logarithm upstream. A reported gap is worth more than a wrong
+answer that looks like a result.
