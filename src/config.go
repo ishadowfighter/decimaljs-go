@@ -150,3 +150,9 @@ func validateConfig(cfg Config) error {
 	}
 	return nil
 }
+
+// wrapInvalidArgument builds the error the port returns where decimal.js
+// throws `[DecimalError] Invalid argument`.
+func wrapInvalidArgument(what string, value int) error {
+	return fmt.Errorf("%w: %s: %d", ErrInvalidArgument, what, value)
+}

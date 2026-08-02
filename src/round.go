@@ -287,3 +287,95 @@ func applyExponentLimits(x Decimal, cfg Config, apply bool) Decimal {
 	}
 	return x
 }
+
+// finaliseNoRound applies the exponent limits without rounding, which is what
+// decimal.js's finalise does when called with no significant-digit count.
+func finaliseNoRound(x Decimal, cfg Config) Decimal {
+	if x.coefficient == nil {
+		return x
+	}
+	return applyExponentLimits(x, cfg, true)
+}
+
+// Abs returns the magnitude of d. NaN stays NaN, and -0 becomes 0.
+func (d Decimal) Abs() Decimal { return defaultContext.Abs(d) }
+
+// Abs returns the magnitude of x.
+func (c *Context) Abs(x Decimal) Decimal { return finaliseNoRound(abs(x), c.config) }
+
+// Neg returns d with its sign flipped. NaN stays NaN, and the sign of zero
+// flips as decimal.js's does.
+func (d Decimal) Neg() Decimal { return defaultContext.Neg(d) }
+
+// Neg returns x with its sign flipped.
+func (c *Context) Neg(x Decimal) Decimal { return finaliseNoRound(negated(x), c.config) }
+
+// Round returns d rounded to a whole number using the default context's
+// rounding mode.
+func (d Decimal) Round() Decimal { return defaultContext.Round(d) }
+
+// Round returns x rounded to a whole number using the Context's rounding mode.
+func (c *Context) Round(x Decimal) Decimal {
+	return finalise(x, x.exponent+1, c.config.Rounding, false, c.config, true)
+}
+
+// Floor returns d rounded to a whole number towards -Infinity.
+func (d Decimal) Floor() Decimal { return defaultContext.Floor(d) }
+
+// Floor returns x rounded to a whole number towards -Infinity.
+func (c *Context) Floor(x Decimal) Decimal {
+	return finalise(x, x.exponent+1, RoundFloor, false, c.config, true)
+}
+
+// Ceil returns d rounded to a whole number towards +Infinity.
+func (d Decimal) Ceil() Decimal { return defaultContext.Ceil(d) }
+
+// Ceil returns x rounded to a whole number towards +Infinity.
+func (c *Context) Ceil(x Decimal) Decimal {
+	return finalise(x, x.exponent+1, RoundCeil, false, c.config, true)
+}
+
+// Trunc returns d with its fraction part discarded.
+func (d Decimal) Trunc() Decimal { return defaultContext.Trunc(d) }
+
+// Trunc returns x with its fraction part discarded.
+func (c *Context) Trunc(x Decimal) Decimal {
+	return finalise(x, x.exponent+1, RoundDown, false, c.config, true)
+}
+
+// ToDecimalPlaces returns d rounded to dp decimal places using the default
+// context's rounding mode.
+func (d Decimal) ToDecimalPlaces(dp int) (Decimal, error) {
+	return defaultContext.ToDecimalPlaces(d, dp, defaultContext.config.Rounding)
+}
+
+// ToDecimalPlaces returns x rounded to dp decimal places using rounding mode
+// rm. decimal.js throws for a dp outside 0..1e9 or an unknown rounding mode;
+// here those are errors.
+func (c *Context) ToDecimalPlaces(x Decimal, dp int, rm RoundingMode) (Decimal, error) {
+	if dp < 0 || dp > maxDigits {
+		return Decimal{}, wrapInvalidArgument("decimal places", dp)
+	}
+	if rm < RoundUp || rm > RoundHalfFloor {
+		return Decimal{}, wrapInvalidArgument("rounding mode", int(rm))
+	}
+	return finalise(x, dp+x.exponent+1, rm, false, c.config, true), nil
+}
+
+// ToSignificantDigits returns d rounded to sd significant digits using the
+// default context's rounding mode.
+func (d Decimal) ToSignificantDigits(sd int) (Decimal, error) {
+	return defaultContext.ToSignificantDigits(d, sd, defaultContext.config.Rounding)
+}
+
+// ToSignificantDigits returns x rounded to sd significant digits using rounding
+// mode rm.
+func (c *Context) ToSignificantDigits(x Decimal, sd int, rm RoundingMode) (Decimal, error) {
+	if sd < 1 || sd > maxDigits {
+		return Decimal{}, wrapInvalidArgument("significant digits", sd)
+	}
+	if rm < RoundUp || rm > RoundHalfFloor {
+		return Decimal{}, wrapInvalidArgument("rounding mode", int(rm))
+	}
+	return finalise(x, sd, rm, false, c.config, true), nil
+}
