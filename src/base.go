@@ -192,3 +192,243 @@ func powerOfTwo(p int, cfg Config) Decimal {
 	r := intPow(Decimal{coefficient: []int{2}, exponent: 0, sign: 1}, int64(p), cfg.Precision, cfg)
 	return finalise(r, cfg.Precision, cfg.Rounding, false, cfg, true)
 }
+
+// toStringBinary renders x in base 2, 8 or 16, as decimal.js's toStringBinary
+// does. With sdSet the output is in the binary-exponent form ending in p+n,
+// rounded to sd significant digits of that base; without it the value is
+// written positionally at the context's precision.
+//
+// The value is converted through its decimal digits: the integer part is
+// converted directly, and a fraction is restored by dividing by the
+// corresponding power of the output base, which is where the inexact flag from
+// division feeds the rounding decision.
+func toStringBinary(x Decimal, baseOut, sd int, sdSet bool, rm RoundingMode, cfg Config) (string, error) {
+	if sdSet {
+		if sd < 1 || sd > maxDigits {
+			return "", wrapInvalidArgument("significant digits", sd)
+		}
+		if rm < RoundUp || rm > RoundHalfFloor {
+			return "", wrapInvalidArgument("rounding mode", int(rm))
+		}
+	} else {
+		sd = cfg.Precision
+		rm = cfg.Rounding
+	}
+
+	if !x.IsFinite() {
+		str := nonFiniteToString(x)
+		if x.sign < 0 {
+			return "-" + str, nil
+		}
+		return str, nil
+	}
+
+	str := finiteToString(x, false, 0)
+	pointAt := strings.IndexByte(str, '.')
+
+	radix := baseOut
+	if sdSet {
+		// The exponent form is built in binary and regrouped afterwards, so the
+		// requested digit count is converted into a count of bits.
+		radix = 2
+		switch baseOut {
+		case 16:
+			sd = sd*4 - 3
+		case 8:
+			sd = sd*3 - 2
+		}
+	}
+
+	// A fraction is restored by dividing by radix^(fraction digits).
+	var divisor Decimal
+	if pointAt >= 0 {
+		str = strings.Replace(str, ".", "", 1)
+		y := Decimal{coefficient: []int{1}, exponent: len(str) - pointAt, sign: 1}
+		y.coefficient = convertBase(finiteToString(y, false, 0), 10, radix)
+		y.exponent = len(y.coefficient)
+		divisor = y
+	}
+
+	xd := convertBase(str, 10, radix)
+	e := len(xd)
+	for length := len(xd); length > 0 && xd[length-1] == 0; length-- {
+		xd = xd[:length-1]
+	}
+
+	if len(xd) == 0 || xd[0] == 0 {
+		if sdSet {
+			str = "0p+0"
+		} else {
+			str = "0"
+		}
+		return withBasePrefix(str, baseOut, x.sign), nil
+	}
+
+	roundUp := false
+	if pointAt < 0 {
+		e--
+	} else {
+		q, inexact := divideCore(Decimal{coefficient: xd, exponent: e, sign: x.sign},
+			divisor, sd, true, rm, false, radix, cfg, false)
+		xd = q.coefficient
+		e = q.exponent
+		roundUp = inexact
+	}
+
+	// The rounding digit is the first one beyond the requested count.
+	rd, rdSet := 0, false
+	if sd < len(xd) {
+		rd, rdSet = xd[sd], true
+	}
+	half := radix / 2
+	roundUp = roundUp || sd+1 < len(xd)
+
+	if rm < RoundHalfUp {
+		awayFromZero := RoundCeil
+		if x.sign < 0 {
+			awayFromZero = RoundFloor
+		}
+		roundUp = (rdSet || roundUp) && (rm == RoundUp || rm == awayFromZero)
+	} else {
+		halfAwayFromZero := RoundHalfCeil
+		if x.sign < 0 {
+			halfAwayFromZero = RoundHalfFloor
+		}
+		roundUp = rd > half || rd == half && rdSet &&
+			(rm == RoundHalfUp || roundUp ||
+				rm == RoundHalfEven && sd > 0 && xd[sd-1]&1 == 1 ||
+				rm == halfAwayFromZero)
+	}
+
+	if sd < len(xd) {
+		xd = xd[:sd]
+	}
+	for len(xd) < sd {
+		xd = append(xd, 0)
+	}
+
+	if roundUp {
+		// A carry can run all the way off the front, lengthening the value.
+		for i := sd - 1; ; i-- {
+			if i < 0 {
+				e++
+				xd = append([]int{1}, xd...)
+				break
+			}
+			xd[i]++
+			if xd[i] <= radix-1 {
+				break
+			}
+			xd[i] = 0
+		}
+	}
+
+	length := len(xd)
+	for length > 0 && xd[length-1] == 0 {
+		length--
+	}
+
+	var b strings.Builder
+	for i := 0; i < length; i++ {
+		b.WriteByte(numerals[xd[i]])
+	}
+	str = b.String()
+
+	switch {
+	case sdSet:
+		if length > 1 {
+			if baseOut == 16 || baseOut == 8 {
+				// Regroup the bits into hexadecimal or octal digits, padding the
+				// last group out so the regrouping is exact.
+				group := 3
+				if baseOut == 16 {
+					group = 4
+				}
+				for length--; length%group != 0; length++ {
+					str += "0"
+				}
+				xd = convertBase(str, radix, baseOut)
+				length = len(xd)
+				for length > 0 && xd[length-1] == 0 {
+					length--
+				}
+				// The leading digit is always 1 here.
+				var g strings.Builder
+				g.WriteString("1.")
+				for i := 1; i < length; i++ {
+					g.WriteByte(numerals[xd[i]])
+				}
+				str = g.String()
+			} else {
+				str = str[:1] + "." + str[1:]
+			}
+		}
+		if e < 0 {
+			str += "p" + itoa(e)
+		} else {
+			str += "p+" + itoa(e)
+		}
+	case e < 0:
+		str = "0." + zeros(-e-1) + str
+	default:
+		if e++; e > length {
+			str += zeros(e - length)
+		} else if e < length {
+			str = str[:e] + "." + str[e:]
+		}
+	}
+
+	return withBasePrefix(str, baseOut, x.sign), nil
+}
+
+// withBasePrefix adds the literal prefix for the base and the sign.
+func withBasePrefix(str string, baseOut, sign int) string {
+	switch baseOut {
+	case 16:
+		str = "0x" + str
+	case 2:
+		str = "0b" + str
+	case 8:
+		str = "0o" + str
+	}
+	if sign < 0 {
+		return "-" + str
+	}
+	return str
+}
+
+// ToBinary returns d as a binary literal at the default context's precision.
+func (d Decimal) ToBinary() string { return defaultContext.mustBase(d, 2) }
+
+// ToOctal returns d as an octal literal at the default context's precision.
+func (d Decimal) ToOctal() string { return defaultContext.mustBase(d, 8) }
+
+// ToHexadecimal returns d as a hexadecimal literal at the default context's
+// precision.
+func (d Decimal) ToHexadecimal() string { return defaultContext.mustBase(d, 16) }
+
+// mustBase renders without a digit count, where no argument can be invalid.
+func (c *Context) mustBase(x Decimal, baseOut int) string {
+	s, err := toStringBinary(x, baseOut, 0, false, c.config.Rounding, c.config)
+	if err != nil {
+		// Unreachable: the argument checks only run when a digit count is given.
+		panic(err)
+	}
+	return s
+}
+
+// ToBinary returns x as a binary literal. With sdSet the binary-exponent form
+// is used, rounded to sd significant binary digits.
+func (c *Context) ToBinary(x Decimal, sd int, sdSet bool, rm RoundingMode) (string, error) {
+	return toStringBinary(x, 2, sd, sdSet, rm, c.config)
+}
+
+// ToOctal returns x as an octal literal.
+func (c *Context) ToOctal(x Decimal, sd int, sdSet bool, rm RoundingMode) (string, error) {
+	return toStringBinary(x, 8, sd, sdSet, rm, c.config)
+}
+
+// ToHexadecimal returns x as a hexadecimal literal.
+func (c *Context) ToHexadecimal(x Decimal, sd int, sdSet bool, rm RoundingMode) (string, error) {
+	return toStringBinary(x, 16, sd, sdSet, rm, c.config)
+}

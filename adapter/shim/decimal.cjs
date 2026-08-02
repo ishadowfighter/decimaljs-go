@@ -235,6 +235,10 @@ function clone(settings) {
 
   P.toNumber = function () { return Number(this.valueOf()); };
 
+  P.toBinary = baseFormatter('toBinary');
+  P.toOctal = baseFormatter('toOctal');
+  P.toHexadecimal = P.toHex = baseFormatter('toHex');
+
   // -- Implemented statics -------------------------------------------------
 
   Decimal.isDecimal = isDecimalInstance;
@@ -299,6 +303,16 @@ function clone(settings) {
   // transform builds a one-operand method returning a new Decimal.
   function transform(op) {
     return function () { return build(this.constructor, op, [wire(this)]); };
+  }
+
+  // baseFormatter builds one of the three base-conversion methods, which take
+  // the same optional digit count and rounding mode as the decimal ones.
+  function baseFormatter(op) {
+    return function (sd, rm) {
+      const Ctor = this.constructor;
+      if (sd === undefined) return call(Ctor, op, [wire(this), 'absent', Ctor.rounding]);
+      return call(Ctor, op, [wire(this), sd, roundingArg(Ctor, rm)]);
+    };
   }
 
   // formatter builds one of the three methods taking an optional digit count.
@@ -410,10 +424,7 @@ const UNIMPLEMENTED_METHODS = [
   'sine', 'sin',
   'squareRoot', 'sqrt',
   'tangent', 'tan',
-  'toBinary',
   'toFraction',
-  'toHexadecimal', 'toHex',
-  'toOctal',
 ];
 
 // decimal.js's static surface minus config, set, clone, sign and isDecimal.

@@ -289,6 +289,12 @@ var ops = map[string]operation{
 	"toExponential": {3, formatOp((*decimal.Context).StringExponent, (*decimal.Context).ToExponential)},
 	"toPrecision":   {3, formatOp((*decimal.Context).String, (*decimal.Context).ToPrecision)},
 
+	// Base conversion. A digit count of "absent" selects the positional form;
+	// any number selects the binary-exponent form.
+	"toBinary": {3, baseOp((*decimal.Context).ToBinary)},
+	"toOctal":  {3, baseOp((*decimal.Context).ToOctal)},
+	"toHex":    {3, baseOp((*decimal.Context).ToHexadecimal)},
+
 	// Digit counts. Both report NaN for a non-finite value, as decimal.js does.
 	"dp": {1, unary(func(d decimal.Decimal, _ decimal.Config) (any, error) {
 		if n, ok := d.DecimalPlaces(); ok {
@@ -414,6 +420,28 @@ func withDigitsAndMode(f func(*decimal.Context, decimal.Decimal, int, decimal.Ro
 			return nil, err
 		}
 		return encode(r, g), nil
+	}
+}
+
+// baseOp adapts one of the three base-conversion methods.
+func baseOp(f func(*decimal.Context, decimal.Decimal, int, bool, decimal.RoundingMode) (string, error)) func(*decimal.Context, decimal.Config, []json.RawMessage) (any, error) {
+	return func(c *decimal.Context, _ decimal.Config, a []json.RawMessage) (any, error) {
+		x, err := construct(c, a[0])
+		if err != nil {
+			return nil, err
+		}
+		n, err := digitCountArg(a[1])
+		if err != nil {
+			return nil, err
+		}
+		if n == absentArg {
+			return f(c, x, 0, false, c.Config().Rounding)
+		}
+		rm, err := roundingMode(a[2])
+		if err != nil {
+			return nil, err
+		}
+		return f(c, x, n, true, rm)
 	}
 }
 

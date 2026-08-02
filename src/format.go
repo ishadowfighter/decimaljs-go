@@ -5,6 +5,10 @@ import (
 	"strings"
 )
 
+// itoa is strconv.Itoa under a shorter name, used where the surrounding code
+// is dense with string building.
+func itoa(n int) string { return strconv.Itoa(n) }
+
 // zeros returns a run of n zero characters, or the empty string for n <= 0.
 func zeros(n int) string {
 	if n <= 0 {

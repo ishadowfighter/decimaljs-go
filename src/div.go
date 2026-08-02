@@ -87,6 +87,14 @@ func subtractLimbs(a, b []int, aL, radix int) []int {
 // included: it produces the same sequence of remainders, which is what makes
 // the final rounding land in the same place.
 func divide(x, y Decimal, pr int, prSet bool, rm RoundingMode, dp bool, radix int, cfg Config, applyLimits bool) Decimal {
+	q, _ := divideCore(x, y, pr, prSet, rm, dp, radix, cfg, applyLimits)
+	return q
+}
+
+// divideCore is divide, additionally reporting whether the quotient was cut
+// short. Base conversion needs that flag - decimal.js keeps it in a global
+// named `inexact` - to round the converted digits correctly.
+func divideCore(x, y Decimal, pr int, prSet bool, rm RoundingMode, dp bool, radix int, cfg Config, applyLimits bool) (Decimal, bool) {
 	xd, yd := x.coefficient, y.coefficient
 
 	sign := 1
@@ -97,19 +105,19 @@ func divide(x, y Decimal, pr int, prSet bool, rm RoundingMode, dp bool, radix in
 	if xd == nil || len(xd) > 0 && xd[0] == 0 || yd == nil || len(yd) > 0 && yd[0] == 0 {
 		switch {
 		case x.sign == signNaN || y.sign == signNaN:
-			return NaN()
+			return NaN(), false
 		case xd != nil && yd != nil && xd[0] == yd[0]:
 			// Both zero.
-			return NaN()
+			return NaN(), false
 		case xd == nil && yd == nil:
 			// Both infinite.
-			return NaN()
+			return NaN(), false
 		case xd != nil && xd[0] == 0 || yd == nil:
 			// Zero divided by something, or anything over an infinity.
-			return Decimal{coefficient: []int{0}, exponent: 0, sign: sign}
+			return Decimal{coefficient: []int{0}, exponent: 0, sign: sign}, false
 		default:
 			// Division by zero.
-			return Inf(sign)
+			return Inf(sign), false
 		}
 	}
 
@@ -308,14 +316,14 @@ func divide(x, y Decimal, pr int, prSet bool, rm RoundingMode, dp bool, radix in
 	if lb == 1 {
 		// Base conversion works in single digits and does its own rounding.
 		q.exponent = e
-		return q
+		return q, more
 	}
 
 	q.exponent = digitCount(limbAt(qd, 0)) + e*lb - 1
 	if dp {
-		return finalise(q, pr+q.exponent+1, rm, more, cfg, applyLimits)
+		return finalise(q, pr+q.exponent+1, rm, more, cfg, applyLimits), more
 	}
-	return finalise(q, pr, rm, more, cfg, applyLimits)
+	return finalise(q, pr, rm, more, cfg, applyLimits), more
 }
 
 // Div returns d / y, rounded to the default context's precision.
