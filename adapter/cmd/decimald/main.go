@@ -229,8 +229,36 @@ var ops = map[string]operation{
 	}},
 
 	"sqrt": {1, decimalUnary((*decimal.Context).Sqrt)},
-	"exp":  {1, decimalUnary((*decimal.Context).Exp)},
-	"ln":   {1, failableUnary((*decimal.Context).Ln)},
+
+	// Trigonometric and hyperbolic.
+	"sin":   {1, failableUnary((*decimal.Context).Sin)},
+	"cos":   {1, failableUnary((*decimal.Context).Cos)},
+	"tan":   {1, failableUnary((*decimal.Context).Tan)},
+	"asin":  {1, failableUnary((*decimal.Context).Asin)},
+	"acos":  {1, failableUnary((*decimal.Context).Acos)},
+	"atan":  {1, failableUnary((*decimal.Context).Atan)},
+	"sinh":  {1, decimalUnary((*decimal.Context).Sinh)},
+	"cosh":  {1, decimalUnary((*decimal.Context).Cosh)},
+	"tanh":  {1, decimalUnary((*decimal.Context).Tanh)},
+	"asinh": {1, failableUnary((*decimal.Context).Asinh)},
+	"acosh": {1, failableUnary((*decimal.Context).Acosh)},
+	"atanh": {1, failableUnary((*decimal.Context).Atanh)},
+	"atan2": {2, func(c *decimal.Context, g decimal.Config, a []json.RawMessage) (any, error) {
+		y, x, err := twoOperands(c, a)
+		if err != nil {
+			return nil, err
+		}
+		r, err := c.Atan2(y, x)
+		if err != nil {
+			return nil, err
+		}
+		return encode(r, g), nil
+	}},
+	"hypot": {-1, reduction(func(c *decimal.Context, xs []decimal.Decimal) decimal.Decimal {
+		return c.Hypot(xs...)
+	})},
+	"exp": {1, decimalUnary((*decimal.Context).Exp)},
+	"ln":  {1, failableUnary((*decimal.Context).Ln)},
 	"log": {2, func(c *decimal.Context, g decimal.Config, a []json.RawMessage) (any, error) {
 		x, base, err := twoOperands(c, a)
 		if err != nil {

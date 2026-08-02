@@ -2,7 +2,6 @@ package decimal
 
 import (
 	"bufio"
-	"errors"
 	"os"
 	"strings"
 	"testing"
@@ -69,14 +68,51 @@ func TestPowAgainstOriginal(t *testing.T) {
 	t.Logf("checked %d pow cases against decimal.js", checked)
 }
 
-// TestPowFractionalExponentReportsGap makes sure the unported case is reported
-// rather than approximated.
-func TestPowFractionalExponentReportsGap(t *testing.T) {
-	c := NewContext(DefaultConfig())
-	x := mustParse(t, "2.32456")
-	y := mustParse(t, "2.29")
-
-	if _, err := c.Pow(x, y); !errors.Is(err, ErrNotImplemented) {
-		t.Errorf("Pow with a fractional exponent returned error %v, want ErrNotImplemented", err)
+// TestPowFractionalAgainstOriginal covers the exp(y*ln(x)) path.
+func TestPowFractionalAgainstOriginal(t *testing.T) {
+	f, err := os.Open("testdata/powfrac.txt")
+	if err != nil {
+		t.Fatalf("open test data: %v", err)
 	}
+	defer f.Close()
+
+	checked := 0
+	scan := bufio.NewScanner(f)
+	scan.Buffer(make([]byte, 0, 1<<16), 1<<20)
+	for line := 1; scan.Scan(); line++ {
+		text := scan.Text()
+		if text == "" {
+			continue
+		}
+		fields := strings.Split(text, "\t")
+		if len(fields) != 5 {
+			t.Fatalf("powfrac.txt line %d: got %d fields, want 5", line, len(fields))
+		}
+
+		cfg := DefaultConfig()
+		cfg.Precision = atoiTest(t, fields[2])
+		cfg.Rounding = RoundingMode(atoiTest(t, fields[3]))
+		cfg.ToExpNeg = -9e15
+		cfg.ToExpPos = 9e15
+		ctx := NewContext(cfg)
+
+		base := mustParseCtx(t, ctx, fields[0])
+		exp := mustParseCtx(t, ctx, fields[1])
+
+		got, err := ctx.Pow(base, exp)
+		if err != nil {
+			if fields[4] == "THROWS" {
+				checked++
+				continue
+			}
+			t.Errorf("Pow(%s, %s) at precision %d: unexpected error: %v", fields[0], fields[1], cfg.Precision, err)
+			continue
+		}
+		if s := ctx.ValueOf(got); s != fields[4] {
+			t.Errorf("Pow(%s, %s) at precision %d rounding %d = %s, want %s",
+				fields[0], fields[1], cfg.Precision, cfg.Rounding, s, fields[4])
+		}
+		checked++
+	}
+	t.Logf("checked %d fractional powers against decimal.js", checked)
 }

@@ -185,6 +185,18 @@ function clone(settings) {
   P.toPower = P.pow = arithmetic('pow');
 
   P.squareRoot = P.sqrt = transform('sqrt');
+  P.sine = P.sin = transform('sin');
+  P.cosine = P.cos = transform('cos');
+  P.tangent = P.tan = transform('tan');
+  P.inverseSine = P.asin = transform('asin');
+  P.inverseCosine = P.acos = transform('acos');
+  P.inverseTangent = P.atan = transform('atan');
+  P.hyperbolicSine = P.sinh = transform('sinh');
+  P.hyperbolicCosine = P.cosh = transform('cosh');
+  P.hyperbolicTangent = P.tanh = transform('tanh');
+  P.inverseHyperbolicSine = P.asinh = transform('asinh');
+  P.inverseHyperbolicCosine = P.acosh = transform('acosh');
+  P.inverseHyperbolicTangent = P.atanh = transform('atanh');
   P.naturalExponential = P.exp = transform('exp');
   P.naturalLogarithm = P.ln = transform('ln');
 
@@ -269,7 +281,9 @@ function clone(settings) {
     Decimal[pair[0]] = function (x, y) { return new Decimal(x)[pair[1]](y); };
   });
 
-  ['abs', 'floor', 'ceil', 'round', 'trunc', 'sqrt', 'cbrt'].forEach(function (name) {
+  ['abs', 'floor', 'ceil', 'round', 'trunc', 'sqrt', 'cbrt',
+   'sin', 'cos', 'tan', 'asin', 'acos', 'atan',
+   'sinh', 'cosh', 'tanh', 'asinh', 'acosh', 'atanh'].forEach(function (name) {
     Decimal[name] = function (x) { return new Decimal(x)[name](); };
   });
 
@@ -281,6 +295,16 @@ function clone(settings) {
   Decimal.log = function (x, base) { return new Decimal(x).log(base); };
   Decimal.log2 = function (x) { return new Decimal(x).log(2); };
   Decimal.log10 = function (x) { return new Decimal(x).log(10); };
+
+  Decimal.atan2 = function (y, x) {
+    return fromState(Decimal, call(Decimal, 'atan2', [operand(y), operand(x)]));
+  };
+
+  Decimal.hypot = function () {
+    const args = Array.prototype.slice.call(arguments).map(operand);
+    if (args.length === 0) throw decimalError('Invalid argument: no arguments');
+    return fromState(Decimal, call(Decimal, 'hypot', args));
+  };
 
   Decimal.random = function (sd) {
     return fromState(Decimal, call(Decimal, 'random', [sd === undefined ? 'absent' : sd]));
@@ -431,26 +455,12 @@ const ROUNDING_MODES = [
 // decimal.js's full prototype surface minus the part the port has reached. Every
 // alias is listed separately because the suite calls both spellings.
 const UNIMPLEMENTED_METHODS = [
-  'cosine', 'cos',
-  'hyperbolicCosine', 'cosh',
-  'hyperbolicSine', 'sinh',
-  'hyperbolicTangent', 'tanh',
-  'inverseCosine', 'acos',
-  'inverseHyperbolicCosine', 'acosh',
-  'inverseHyperbolicSine', 'asinh',
-  'inverseHyperbolicTangent', 'atanh',
-  'inverseSine', 'asin',
-  'inverseTangent', 'atan',
-  'sine', 'sin',
-  'tangent', 'tan',
   'toFraction',
 ];
 
 // decimal.js's static surface minus config, set, clone, sign and isDecimal.
 const UNIMPLEMENTED_STATICS = [
-  'acos', 'acosh', 'asin', 'asinh', 'atan', 'atanh', 'atan2',
-  'cos', 'cosh', 'hypot',
-  'sin', 'sinh', 'tan', 'tanh',
+
 ];
 
 // One prototype object is shared by every cloned constructor, as in decimal.js,

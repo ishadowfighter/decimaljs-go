@@ -97,20 +97,18 @@ func intPow(x Decimal, n int64, pr int, cfg Config) Decimal {
 	return r
 }
 
-// Pow returns d raised to the power y, for an integer y.
+// Pow returns d raised to the power y.
 func (d Decimal) Pow(y Decimal) (Decimal, error) { return defaultContext.Pow(d, y) }
 
 // Pow returns x raised to the power y.
 //
-// Only integer exponents are supported: they take decimal.js's exact
-// exponentiation-by-squaring path. A fractional exponent needs exp and ln,
-// which are not ported yet, and returns ErrNotImplemented rather than an
-// approximation.
+// An integer exponent takes decimal.js's exact path, exponentiation by
+// squaring. Everything else is exp(y*ln(x)) with guard digits, re-run at higher
+// precision when the result lands on a rounding boundary.
 func (c *Context) Pow(x, y Decimal) (Decimal, error) {
 	cfg := c.config
+	pr, rm := cfg.Precision, cfg.Rounding
 
-	// Non-finite or zero operands follow JavaScript's Math.pow on the values
-	// converted to numbers, which is what decimal.js does here.
 	if x.coefficient == nil || y.coefficient == nil || x.coefficient[0] == 0 || y.coefficient[0] == 0 {
 		return c.NewFromFloat(jsPow(x.Float64(), y.Float64())), nil
 	}
@@ -119,27 +117,105 @@ func (c *Context) Pow(x, y Decimal) (Decimal, error) {
 		return x, nil
 	}
 	if y.Eq(one()) {
-		return finalise(x, cfg.Precision, cfg.Rounding, false, cfg, true), nil
+		return finalise(x, pr, rm, false, cfg, true), nil
 	}
 
 	// y is an integer when its limbs run out at or before the units limb.
 	e := floorDiv(y.exponent, logBase)
-	if e < len(y.coefficient)-1 {
-		return Decimal{}, fmt.Errorf("%w: fractional exponent %s", ErrNotImplemented, c.ValueOf(y))
-	}
-
 	yn := y.Float64()
-	k := yn
-	if k < 0 {
-		k = -k
-	}
-	if k > maxSafeInteger {
-		return Decimal{}, fmt.Errorf("%w: exponent %s exceeds the exact integer range", ErrNotImplemented, c.ValueOf(y))
+	if e >= len(y.coefficient)-1 && math.Abs(yn) <= maxSafeInteger {
+		k := math.Abs(yn)
+		r := intPow(x, int64(k), pr, cfg)
+		if y.sign < 0 {
+			return divide(one(), r, 0, false, rm, false, 0, cfg, true), nil
+		}
+		return finalise(r, pr, rm, false, cfg, true), nil
 	}
 
-	r := intPow(x, int64(k), cfg.Precision, cfg)
-	if y.sign < 0 {
-		return divide(one(), r, 0, false, cfg.Rounding, false, 0, cfg, true), nil
+	sign := x.sign
+	if sign < 0 {
+		// A negative base needs an integer exponent; the result is positive
+		// when that integer is even.
+		if e < len(y.coefficient)-1 {
+			return NaN(), nil
+		}
+		// Reading past the end gives undefined in the original, and
+		// `undefined & 1` is zero, so an absent limb counts as even.
+		if limbAt(y.coefficient, e)&1 == 0 {
+			sign = 1
+		}
+		if x.exponent == 0 && x.coefficient[0] == 1 && len(x.coefficient) == 1 {
+			// x is -1.
+			x.sign = sign
+			return x, nil
+		}
 	}
-	return finalise(r, cfg.Precision, cfg.Rounding, false, cfg, true), nil
+
+	// Estimate the result exponent from x^y = 10^(y*log10(x)). The estimate is
+	// kept in a float64 until it has been range-checked: for a large exponent
+	// it runs far past what an int can hold, and converting first would wrap.
+	var eFloat float64
+	k := jsPow(x.Float64(), yn)
+	if k == 0 || math.IsInf(k, 0) {
+		mantissa, _ := strconv.ParseFloat("0."+digitsToString(x.coefficient), 64)
+		eFloat = math.Floor(yn * (math.Log(mantissa)/math.Ln10 + float64(x.exponent) + 1))
+	} else {
+		eFloat = float64(c.NewFromFloat(k).exponent)
+	}
+
+	if eFloat > float64(cfg.MaxE)+1 || eFloat < float64(cfg.MinE)-1 {
+		if eFloat > 0 {
+			return Inf(sign), nil
+		}
+		return Decimal{coefficient: []int{0}, exponent: 0, sign: sign}, nil
+	}
+	e = int(eFloat)
+
+	// The working configuration rounds down: the guard digits, not the mode,
+	// decide the last digit until the very end.
+	wcfg := cfg
+	wcfg.Rounding = RoundHalfUp
+	base := abs(x)
+
+	// Extra guard digits for the logarithm, from the size of the exponent.
+	guard := len(itoa(e))
+	if guard > 12 {
+		guard = 12
+	}
+
+	compute := func(workPr, lnPr int) (Decimal, error) {
+		wcfg.Precision = workPr
+		ln, err := naturalLogarithm(base, lnPr, true, wcfg)
+		if err != nil {
+			return Decimal{}, err
+		}
+		return naturalExponential(mul(y, ln, wcfg, false), workPr, true, wcfg), nil
+	}
+
+	r, err := compute(pr, pr+guard)
+	if err != nil {
+		return Decimal{}, err
+	}
+
+	if r.coefficient != nil {
+		r = finalise(r, pr+5, RoundDown, false, wcfg, false)
+
+		if checkRoundingDigits(r.coefficient, pr, rm, -1) {
+			workPr := pr + 10
+			r, err = compute(workPr, workPr+guard)
+			if err != nil {
+				return Decimal{}, err
+			}
+			r = finalise(r, workPr+5, RoundDown, false, wcfg, false)
+
+			// Fourteen nines from the second rounding digit mean the result is
+			// exact and rounds up.
+			if digitsAllNine(sliceDigits(digitsToString(r.coefficient), pr+1, pr+15)) {
+				r = finalise(r, pr+1, RoundUp, false, wcfg, false)
+			}
+		}
+	}
+
+	r.sign = sign
+	return finalise(r, pr, rm, false, cfg, true), nil
 }
