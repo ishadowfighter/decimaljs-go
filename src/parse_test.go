@@ -1,6 +1,9 @@
 package decimal
 
-import "testing"
+import (
+	"math"
+	"testing"
+)
 
 // The expected coefficients, exponents and signs below were taken from
 // decimal.js itself, at its default configuration, since the vendored suite
@@ -105,6 +108,108 @@ func TestNewFromInt(t *testing.T) {
 		if !equalLimbs(got.Coefficient(), c.limbs) || got.Exponent() != c.exp || got.Sign() != c.sign {
 			t.Errorf("NewFromInt(%d) = d:%v e:%d s:%d, want d:%v e:%d s:%d",
 				c.in, got.Coefficient(), got.Exponent(), got.Sign(), c.limbs, c.exp, c.sign)
+		}
+	}
+}
+
+func TestParseNonFinite(t *testing.T) {
+	// decimal.js matches these two spellings exactly and case-sensitively,
+	// after stripping the sign, so "-NaN" is NaN and "nan" is invalid.
+	for _, c := range []struct {
+		in    string
+		isNaN bool
+		sign  int
+	}{
+		{"NaN", true, signNaN},
+		{"-NaN", true, signNaN},
+		{"Infinity", false, 1},
+		{"-Infinity", false, -1},
+		{"+Infinity", false, 1},
+	} {
+		got, err := Parse(c.in)
+		if err != nil {
+			t.Errorf("Parse(%q): unexpected error: %v", c.in, err)
+			continue
+		}
+		if got.IsFinite() {
+			t.Errorf("Parse(%q) is finite, want non-finite", c.in)
+			continue
+		}
+		if got.IsNaN() != c.isNaN || got.Sign() != c.sign {
+			t.Errorf("Parse(%q) = NaN:%t s:%d, want NaN:%t s:%d", c.in, got.IsNaN(), got.Sign(), c.isNaN, c.sign)
+		}
+	}
+
+	for _, in := range []string{"nan", "infinity", "INFINITY", "Inf", "NaNa", " NaN"} {
+		if _, err := Parse(in); err == nil {
+			t.Errorf("Parse(%q) succeeded, want an error", in)
+		}
+	}
+}
+
+func TestParseUnderscoreSeparators(t *testing.T) {
+	for _, c := range []struct {
+		in    string
+		limbs []int
+		exp   int
+	}{
+		{"1_000", []int{1000}, 3},
+		{"1_000.000_1", []int{1000, 1000}, 3},
+	} {
+		got, err := Parse(c.in)
+		if err != nil {
+			t.Errorf("Parse(%q): unexpected error: %v", c.in, err)
+			continue
+		}
+		if !equalLimbs(got.Coefficient(), c.limbs) || got.Exponent() != c.exp {
+			t.Errorf("Parse(%q) = d:%v e:%d, want d:%v e:%d", c.in, got.Coefficient(), got.Exponent(), c.limbs, c.exp)
+		}
+	}
+
+	// An underscore that is not between two digits is not a separator.
+	for _, in := range []string{"_1", "1_", "1__0", "1_.0", "1._0"} {
+		if _, err := Parse(in); err == nil {
+			t.Errorf("Parse(%q) succeeded, want an error", in)
+		}
+	}
+}
+
+func TestNewFromFloat(t *testing.T) {
+	cases := []struct {
+		in    float64
+		limbs []int
+		exp   int
+		sign  int
+	}{
+		{0.1, []int{1000000}, -1, 1},
+		{-0.1, []int{1000000}, -1, -1},
+		{1e21, []int{1}, 21, 1},
+		{1e-7, []int{1}, -7, 1},
+		{123456.7891011, []int{123456, 7891011}, 5, 1},
+		{0, []int{0}, 0, 1},
+		{math.Copysign(0, -1), []int{0}, 0, -1},
+		{1.0 / 3.0, []int{3333333, 3333333, 3300000}, -1, 1},
+		{5e-324, []int{500000}, -324, 1},
+		{math.MaxFloat64, []int{1, 7976931, 3486231, 5700000}, 308, 1},
+	}
+	for _, c := range cases {
+		got := NewFromFloat(c.in)
+		if !equalLimbs(got.Coefficient(), c.limbs) || got.Exponent() != c.exp || got.Sign() != c.sign {
+			t.Errorf("NewFromFloat(%v) = d:%v e:%d s:%d, want d:%v e:%d s:%d",
+				c.in, got.Coefficient(), got.Exponent(), got.Sign(), c.limbs, c.exp, c.sign)
+		}
+	}
+
+	if !NewFromFloat(math.NaN()).IsNaN() {
+		t.Error("NewFromFloat(NaN) is not NaN")
+	}
+	for _, c := range []struct {
+		in   float64
+		sign int
+	}{{math.Inf(1), 1}, {math.Inf(-1), -1}} {
+		got := NewFromFloat(c.in)
+		if !got.IsInf() || got.Sign() != c.sign {
+			t.Errorf("NewFromFloat(%v) = inf:%t s:%d, want inf:true s:%d", c.in, got.IsInf(), got.Sign(), c.sign)
 		}
 	}
 }

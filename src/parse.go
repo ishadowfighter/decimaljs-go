@@ -2,6 +2,7 @@ package decimal
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 )
@@ -196,6 +197,44 @@ func indexAnyByte(s string, a, b byte) int {
 	return -1
 }
 
+// NaN returns the NaN value. decimal.js stores it as a null coefficient with a
+// NaN sign; here the sign is signNaN.
+func NaN() Decimal { return Decimal{sign: signNaN} }
+
+// Inf returns +Infinity for a non-negative sign and -Infinity otherwise.
+func Inf(sign int) Decimal {
+	if sign < 0 {
+		return Decimal{sign: -1}
+	}
+	return Decimal{sign: 1}
+}
+
+// IsNaN reports whether d is NaN.
+func (d Decimal) IsNaN() bool { return d.coefficient == nil && d.sign == signNaN }
+
+// IsInf reports whether d is +Infinity or -Infinity.
+func (d Decimal) IsInf() bool { return d.coefficient == nil && d.sign != signNaN }
+
+// IsFinite reports whether d is a finite number, i.e. neither NaN nor an
+// infinity.
+func (d Decimal) IsFinite() bool { return d.coefficient != nil }
+
+// stripUnderscores removes the separators decimal.js allows between digits,
+// matching its `/(\d)_(?=\d)/g` replacement: an underscore only disappears when
+// it sits between two digits, so "1_000" is 1000 while "_1", "1_" and "1__0"
+// stay invalid.
+func stripUnderscores(s string) string {
+	var b strings.Builder
+	b.Grow(len(s))
+	for i := 0; i < len(s); i++ {
+		if s[i] == '_' && i > 0 && isDigit(s[i-1]) && i+1 < len(s) && isDigit(s[i+1]) {
+			continue
+		}
+		b.WriteByte(s[i])
+	}
+	return b.String()
+}
+
 // Parse returns the Decimal represented by s, using the default context.
 func Parse(s string) (Decimal, error) { return defaultContext.Parse(s) }
 
@@ -213,10 +252,69 @@ func (c *Context) Parse(s string) (Decimal, error) {
 			s = s[1:]
 		}
 	}
-	if !isDecimalString(s) {
-		return Decimal{}, fmt.Errorf("%w: %s", ErrInvalidArgument, s)
+	if isDecimalString(s) {
+		return parseDecimalString(sign, s, c.config, true), nil
 	}
-	return parseDecimalString(sign, s, c.config, true), nil
+
+	// decimal.js's parseOther: separators first, then the two spelled-out
+	// non-finite values. Both are matched exactly and case-sensitively, and the
+	// sign has already been consumed, so "-Infinity" arrives here as
+	// "Infinity" while "infinity" and "nan" stay invalid.
+	if strings.ContainsRune(s, '_') {
+		if stripped := stripUnderscores(s); isDecimalString(stripped) {
+			return parseDecimalString(sign, stripped, c.config, true), nil
+		}
+	} else {
+		switch s {
+		case "Infinity":
+			return Inf(sign), nil
+		case "NaN":
+			return NaN(), nil
+		}
+	}
+
+	// Hexadecimal, binary and octal literals are accepted by decimal.js and
+	// are not ported yet; they are rejected here rather than mis-parsed.
+	return Decimal{}, fmt.Errorf("%w: %s", ErrInvalidArgument, s)
+}
+
+// NewFromFloat returns the Decimal equal to the shortest decimal representation
+// of f, using the default context.
+func NewFromFloat(f float64) Decimal { return defaultContext.NewFromFloat(f) }
+
+// NewFromFloat returns the Decimal equal to f. Like decimal.js's number
+// constructor it converts through the shortest string that round-trips to f, so
+// New(0.1) is exactly 0.1 rather than the binary value 0.1 denotes. Negative
+// zero keeps its sign, and the non-finite floats map to the non-finite
+// Decimals.
+func (c *Context) NewFromFloat(f float64) Decimal {
+	switch {
+	case math.IsNaN(f):
+		return NaN()
+	case math.IsInf(f, 0):
+		return Inf(sgn(f))
+	case f == 0:
+		return Decimal{coefficient: []int{0}, exponent: 0, sign: sgn(math.Copysign(1, f))}
+	}
+
+	sign := 1
+	if f < 0 {
+		sign = -1
+		f = -f
+	}
+	// 'g' with a precision of -1 is the shortest representation that parses
+	// back to f, which is exactly what JavaScript's Number-to-string
+	// conversion produces. The two disagree on when to switch to exponential
+	// notation, but not on the digits, and parseDecimalString accepts both
+	// spellings.
+	return parseDecimalString(sign, strconv.FormatFloat(f, 'g', -1, 64), c.config, true)
+}
+
+func sgn(f float64) int {
+	if math.Signbit(f) {
+		return -1
+	}
+	return 1
 }
 
 // NewFromInt returns the Decimal equal to n.
