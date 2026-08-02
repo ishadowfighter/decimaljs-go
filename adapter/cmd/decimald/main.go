@@ -229,6 +229,19 @@ var ops = map[string]operation{
 	}},
 
 	"sqrt": {1, decimalUnary((*decimal.Context).Sqrt)},
+	"exp":  {1, decimalUnary((*decimal.Context).Exp)},
+	"ln":   {1, failableUnary((*decimal.Context).Ln)},
+	"log": {2, func(c *decimal.Context, g decimal.Config, a []json.RawMessage) (any, error) {
+		x, base, err := twoOperands(c, a)
+		if err != nil {
+			return nil, err
+		}
+		r, err := c.Log(x, base)
+		if err != nil {
+			return nil, err
+		}
+		return encode(r, g), nil
+	}},
 	"cbrt": {1, decimalUnary((*decimal.Context).Cbrt)},
 
 	// Sign and whole-number rounding.
@@ -434,6 +447,21 @@ func withDigitsAndMode(f func(*decimal.Context, decimal.Decimal, int, decimal.Ro
 			return nil, err
 		}
 		r, err := f(c, x, n, rm)
+		if err != nil {
+			return nil, err
+		}
+		return encode(r, g), nil
+	}
+}
+
+// failableUnary adapts a one-operand method that can report an error.
+func failableUnary(f func(*decimal.Context, decimal.Decimal) (decimal.Decimal, error)) func(*decimal.Context, decimal.Config, []json.RawMessage) (any, error) {
+	return func(c *decimal.Context, g decimal.Config, a []json.RawMessage) (any, error) {
+		x, err := construct(c, a[0])
+		if err != nil {
+			return nil, err
+		}
+		r, err := f(c, x)
 		if err != nil {
 			return nil, err
 		}

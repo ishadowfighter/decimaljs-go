@@ -185,6 +185,13 @@ function clone(settings) {
   P.toPower = P.pow = arithmetic('pow');
 
   P.squareRoot = P.sqrt = transform('sqrt');
+  P.naturalExponential = P.exp = transform('exp');
+  P.naturalLogarithm = P.ln = transform('ln');
+
+  P.logarithm = P.log = function (base) {
+    // decimal.js defaults the base to ten.
+    return build(this.constructor, 'log', [wire(this), operand(base === undefined ? '10' : base)]);
+  };
   P.cubeRoot = P.cbrt = transform('cbrt');
   P.absoluteValue = P.abs = transform('abs');
   P.negated = P.neg = transform('neg');
@@ -267,6 +274,13 @@ function clone(settings) {
   });
 
   Decimal.clamp = function (x, min, max) { return new Decimal(x).clamp(min, max); };
+
+  ['exp', 'ln'].forEach(function (name) {
+    Decimal[name] = function (x) { return new Decimal(x)[name](); };
+  });
+  Decimal.log = function (x, base) { return new Decimal(x).log(base); };
+  Decimal.log2 = function (x) { return new Decimal(x).log(2); };
+  Decimal.log10 = function (x) { return new Decimal(x).log(10); };
 
   Decimal.random = function (sd) {
     return fromState(Decimal, call(Decimal, 'random', [sd === undefined ? 'absent' : sd]));
@@ -427,9 +441,6 @@ const UNIMPLEMENTED_METHODS = [
   'inverseHyperbolicTangent', 'atanh',
   'inverseSine', 'asin',
   'inverseTangent', 'atan',
-  'logarithm', 'log',
-  'naturalExponential', 'exp',
-  'naturalLogarithm', 'ln',
   'sine', 'sin',
   'tangent', 'tan',
   'toFraction',
@@ -438,8 +449,7 @@ const UNIMPLEMENTED_METHODS = [
 // decimal.js's static surface minus config, set, clone, sign and isDecimal.
 const UNIMPLEMENTED_STATICS = [
   'acos', 'acosh', 'asin', 'asinh', 'atan', 'atanh', 'atan2',
-  'cos', 'cosh', 'exp', 'hypot',
-  'ln', 'log', 'log2', 'log10',
+  'cos', 'cosh', 'hypot',
   'sin', 'sinh', 'tan', 'tanh',
 ];
 
