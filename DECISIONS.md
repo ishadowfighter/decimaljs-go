@@ -110,3 +110,42 @@ Rather than approximate it, `Pow` returns `ErrNotImplemented`. An exponent
 beyond the exact-integer range does the same, since that path also routes
 through the logarithm upstream. A reported gap is worth more than a wrong
 answer that looks like a result.
+
+## D10 — Where decimal.js stops rounding, and why it matters
+
+decimal.js carries a module-level `external` flag. When it is false, `plus`,
+`times` and the rest skip their final rounding, so intermediate values keep full
+width; the flag is cleared inside `sqrt`, `cbrt`, `intPow`, `mod`, `hypot`,
+`toFraction`, the Taylor series helper and the `atan` series loop, and nowhere
+else. The port threads that through as an explicit `applyLimits` argument rather
+than a package-level variable, because a global would make the library unsafe
+for concurrent use.
+
+Getting this wrong is silent. Computing `1 + sqrt((1-x)(1+x))` without the
+rounding decimal.js applies changed `asin(1e-7)` at precision 5 from
+`0.00000010001` to `0.0000001` — a correct-looking answer that disagrees in the
+last place.
+
+## D11 — Two JavaScript idioms that carry meaning
+
+Reading past the end of an array gives `undefined`, and the original relies on
+what that does next in two opposite ways. In `checkRoundingDigits` the value is
+truncated with `| 0`, which turns it into zero, so an absent limb participates
+in the comparison; in `divide` and `finalise` it is compared directly, where
+`undefined` fails every comparison and so ends a loop. Treating both as "read
+zero" or both as "not present" changes results, so each site is transliterated
+to match the idiom it uses.
+
+The series functions also pass their `external = true` assignment as the
+`isTruncated` argument of the final rounding, so the result is always rounded as
+if digits had been discarded. It reads like a typo and is not: without it, `ln`
+at a high precision with ROUND_UP comes out two digits short.
+
+## D12 — Test data is generated from decimal.js, not written by hand
+
+Every unit test under `src/` compares against expectations produced by running
+decimal.js itself, by the scripts in `tests/port/`. Hand-written expectations
+would encode a reading of the source rather than its behaviour, and the point of
+the exercise is equivalence. Where a hand-written expectation did slip in, it
+was wrong and the port was right — `NewFromInt(-9007199254740991)` was expected
+to have four limbs and has three.
