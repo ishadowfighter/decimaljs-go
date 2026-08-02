@@ -299,3 +299,72 @@ func sub(x, y Decimal, cfg Config, applyLimits bool) Decimal {
 	}
 	return result
 }
+
+// Mul returns d * y, rounded to the default context's precision.
+func (d Decimal) Mul(y Decimal) Decimal { return defaultContext.Mul(d, y) }
+
+// Mul returns x * y, rounded to the Context's precision using its rounding
+// mode.
+func (c *Context) Mul(x, y Decimal) Decimal { return mul(x, y, c.config, true) }
+
+// mul is decimal.js's P.times: long multiplication over base-1e7 limbs.
+//
+// The sign is the product of the two signs, which also carries NaN through for
+// free: NaN's sign is zero here, and zero times anything is zero.
+func mul(x, y Decimal, cfg Config, applyLimits bool) Decimal {
+	xd, yd := x.coefficient, y.coefficient
+	sign := x.sign * y.sign
+
+	if xd == nil || len(xd) > 0 && xd[0] == 0 || yd == nil || len(yd) > 0 && yd[0] == 0 {
+		switch {
+		case sign == signNaN,
+			// Zero times infinity, either way round.
+			xd != nil && xd[0] == 0 && yd == nil,
+			yd != nil && yd[0] == 0 && xd == nil:
+			return NaN()
+		case xd == nil || yd == nil:
+			return Inf(sign)
+		default:
+			return Decimal{coefficient: []int{0}, exponent: 0, sign: sign}
+		}
+	}
+
+	e := floorDiv(x.exponent, logBase) + floorDiv(y.exponent, logBase)
+
+	// Let xd be the longer operand, so the inner loop is the long one.
+	if len(xd) < len(yd) {
+		xd, yd = yd, xd
+	}
+
+	// Each partial product is below (1e7-1)^2 + 2e7, comfortably inside the
+	// exact-integer range of the float64s decimal.js uses and of Go's int.
+	r := make([]int, len(xd)+len(yd))
+	carry := 0
+	for i := len(yd) - 1; i >= 0; i-- {
+		carry = 0
+		k := len(xd) + i
+		for ; k > i; k-- {
+			t := r[k] + yd[i]*xd[k-i-1] + carry
+			r[k] = t % base
+			carry = t / base
+		}
+		r[k] = (r[k] + carry) % base
+	}
+
+	for len(r) > 0 && r[len(r)-1] == 0 {
+		r = r[:len(r)-1]
+	}
+
+	// The final carry either occupies the leading limb or leaves it empty.
+	if carry != 0 {
+		e++
+	} else {
+		r = r[1:]
+	}
+
+	result := Decimal{coefficient: r, exponent: getBase10Exponent(r, e), sign: sign}
+	if applyLimits {
+		return finalise(result, cfg.Precision, cfg.Rounding, false, cfg, true)
+	}
+	return result
+}

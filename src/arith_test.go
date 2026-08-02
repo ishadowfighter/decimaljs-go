@@ -132,3 +132,7 @@ func TestAddSubDoNotMutateOperands(t *testing.T) {
 		t.Errorf("right operand mutated: %v, want %v", y.Coefficient(), yBefore)
 	}
 }
+
+func TestMulAgainstOriginal(t *testing.T) {
+	runBinaryCases(t, "times.txt", func(c *Context, x, y Decimal) Decimal { return c.Mul(x, y) })
+}
