@@ -56,10 +56,9 @@ func TestParseInternals(t *testing.T) {
 }
 
 func TestParseRejectsInvalid(t *testing.T) {
-	// Strings decimal.js's decimal grammar refuses. Hexadecimal, binary and
-	// octal literals are also refused for now: they are handled by a separate
-	// path upstream that is not yet ported.
-	for _, in := range []string{"", ".", "-", "+", "1.2.3", "1e", "1e+", "e5", "1 2", "1,2", "12e5.5", "0x10"} {
+	// Strings decimal.js's decimal grammar refuses. Radix literals are covered
+	// separately, in TestParseRadixLiterals.
+	for _, in := range []string{"", ".", "-", "+", "1.2.3", "1e", "1e+", "e5", "1 2", "1,2", "12e5.5", "0y10"} {
 		if got, err := Parse(in); err == nil {
 			t.Errorf("Parse(%q) = %v, want an error", in, got)
 		}
