@@ -189,3 +189,94 @@ waiting on the reference implementation rather than comparing results.
 
 The restriction is in the harness with the reasoning next to it, so it can be
 lifted and re-run by anyone who wants to.
+
+---
+
+# Bonus criteria
+
+Where this port stands against the four optional criteria, with the evidence
+for each and the caveats stated rather than left to be discovered.
+
+## Differential Fuzz Survivor — claimed
+
+`fuzz/harness.mjs`, log committed at `fuzz/log.txt`:
+
+    # seed 99, budget 90s, reference decimal.js/decimal.mjs
+    # 279188 cases in 90.0s, 0 divergence(s)
+
+Ninety continuous seconds against the required sixty, 279188 cases, zero
+divergences. Thirty operations across the shared public API — the arithmetic,
+`pow`, `sqrt`, `cbrt`, `exp`, `ln`, all the trigonometric and hyperbolic
+functions, the rounding methods and the formatters — each drawn against seven
+precision and rounding-mode combinations. The run is seeded, so any divergence
+is replayable from its seed alone.
+
+Two caveats that belong with the claim:
+
+- Five operations draw from a restricted operand range: `pow`'s exponent, and
+  the arguments to `exp`, `sinh`, `cosh` and `tanh`. The reason is upstream, not
+  here — decimal.js exhausts the V8 heap on `exp(-3e15)` and its own source
+  documents abandoning `cosh` at 1e7 after a two-minute wait. Unbounded draws
+  measured patience rather than agreement. The bounds are in the harness with
+  the reasoning beside them.
+- The oracle is decimal.js, not mpmath. See D1: the mpmath fuzzer decimal.js
+  ships does not pass on a clean upstream checkout, so it cannot settle what
+  "correct" means for a port whose contract is equivalence.
+
+## Zero Unsafe — claimed for the library
+
+The ported library, `src/`, contains:
+
+| Escape hatch | Count |
+|---|---|
+| `unsafe` | 0 |
+| `reflect` | 0 |
+| cgo (`import "C"`) | 0 |
+| `any` / `interface{}` | 0 |
+
+Its entire import set is `errors`, `fmt`, `math`, `strconv`, `strings`,
+`crypto/rand` and `encoding/binary` — the last two only for `Random` when
+`Crypto` is set. There are no dependencies beyond the standard library.
+
+The honest asterisk: `adapter/` uses `any` 61 times. That is the JSON
+marshalling boundary of the test harness — a wire protocol whose values are
+genuinely heterogeneous, and code that is explicitly not part of the product.
+The library a caller imports has none of it.
+
+## Bug Catcher — found, not yet filed
+
+`tests/original/modules/powSqrt.js` cannot run, on a clean upstream checkout as
+much as here. Its loop is:
+
+    for (var e, n, p, r, s; total < 10000; ) {
+
+`total` is a free variable, and no version of the vendored `setup.js` defines
+it — the counter lives as `testNumber`, a closure variable inside `T`. The file
+therefore throws `ReferenceError: total is not defined` before its first
+assertion. It goes unnoticed because upstream's own `test.js` does not list the
+module among the sixty it executes, so nothing ever calls it.
+
+This is a latent defect in the original repository: a test that has silently not
+tested anything, and a genuinely valuable one — it checks `pow(0.5)` against
+`sqrt` at random precisions and rounding modes, which is the strongest available
+cross-check on the two slowest paths in the library.
+
+It has **not** been filed upstream. Doing so needs the repository owner's
+GitHub account, and filing an issue under someone else's name is not something a
+tool should do unprompted. The reproduction is one line:
+
+    cd decimal.js && node -e "require('./test/modules/powSqrt.js')"
+
+The port's side of it is fixed in `adapter/parity-runner.cjs`, which supplies
+the missing harness global rather than editing the vendored file — see the note
+there. The module's assertions stay outside the 22658, because upstream's runner
+does not execute it and folding them in would break the comparison against the
+baseline.
+
+## Decision Log — claimed
+
+Fifteen entries above this section, each a real fork in the road with the
+reasoning that decided it, including three where the first answer was wrong and
+the record says so: the benchmark that measured the Windows clock (D13), the
+hand-written test expectation that the port contradicted correctly (D12), and
+the `toString` regression left in place rather than tuned away (D14).

@@ -131,6 +131,17 @@ Startup, median of 15 runs: **17 ms** for the Go binary against **82 ms** for No
 
 ---
 
+## Bonus criteria
+
+| Criterion | Status |
+|---|---|
+| **Differential Fuzz Survivor** | Claimed — 279188 cases in 90 s, **zero divergences**, log at [`fuzz/log.txt`](fuzz/log.txt) |
+| **Zero Unsafe** | Claimed for the library — `src/` has no `unsafe`, no `reflect`, no cgo and no `any`; the 61 uses of `any` are in the test-only adapter's JSON boundary |
+| **Bug Catcher** | Found, not filed — `powSqrt.js` throws `ReferenceError: total is not defined` on a clean upstream checkout and has never run; filing needs the repository owner's account |
+| **Decision Log** | Claimed — 15 entries in [`DECISIONS.md`](DECISIONS.md), including three where the first attempt was wrong |
+
+Evidence and caveats for each are at the end of [`DECISIONS.md`](DECISIONS.md).
+
 ## Layout
 
 ```
