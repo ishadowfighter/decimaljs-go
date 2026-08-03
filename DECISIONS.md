@@ -365,8 +365,7 @@ It covers D2 and D10 (the unrounded intermediate that changed `asin` in the last
 digit), D11 (the two opposite meanings JavaScript gives an absent array element),
 D13 (the benchmark that reported the Windows clock's resolution as latency), D16
 and D17 (the upstream test that had never run), and the adapter decision I would
-take back. Source at `writeup/devto.md`; short-form versions at
-`writeup/x-posts.md`.
+take back. Sources at `writeup/devto.md` and `writeup/x-post.md`.
 
 ## Decision Log
 
