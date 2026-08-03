@@ -171,6 +171,14 @@ decimaljs-go/
 
 The port's own tests are `src/*_test.go`, beside the code, because they exercise unexported internals — the limb array, the exponent, `finalise` itself. `tests/port/` holds the generators that produce their expected values by running decimal.js; the committed expectations are a stride sample of those sweeps. See [`tests/port/README.md`](tests/port/README.md).
 
+## Write-up
+
+The story of the port — what broke, how equivalence was proven, the benchmark
+that measured the wrong thing, and the decision I would take back:
+
+- Dev.to: _link once published_ · draft at [`writeup/devto.md`](writeup/devto.md)
+- X: _link once published_ · draft at [`writeup/x-thread.md`](writeup/x-thread.md)
+
 ## Credits
 
 Original library: [decimal.js](https://github.com/MikeMcl/decimal.js) by Michael Mclaughlin, MIT.

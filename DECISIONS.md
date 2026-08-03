@@ -352,6 +352,15 @@ has been there. And because the port can now run it, the report comes with
 evidence that the test itself is sound: with the missing counter supplied, it
 passes 10000 of 10000.
 
+## Write-up
+
+Published account of the port, covering the four entries above where the first
+attempt was wrong, the oracle problem, and the adapter decision I would take
+back:
+
+- Dev.to: _link once published_ · draft at `writeup/devto.md`
+- X: _link once published_ · draft at `writeup/x-thread.md`
+
 ## Decision Log
 
 Seventeen entries above this section, each a real fork in the road with the
