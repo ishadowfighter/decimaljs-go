@@ -2,81 +2,84 @@
 
 A Go port of [**MikeMcl/decimal.js**](https://github.com/MikeMcl/decimal.js) — an arbitrary-precision Decimal type for JavaScript.
 
-Built for **Port Mortem 2026** (Code Resurrection Wave 2, Hackathon Raptors) · Track F: JavaScript → Go.
+Port Mortem 2026 (Code Resurrection Wave 2, Hackathon Raptors) · Track F: JavaScript → Go.
 
-> **decimal.js's own test suite passes, unmodified, against this Go build: 22658 of 22658 assertions.**
-> That is the same count a clean upstream checkout produces. The per-module table is in
-> [`results/parity.txt`](results/parity.txt); the tests themselves are byte-for-byte upstream and hashed in
-> [`tests/original/HASHES.txt`](tests/original/HASHES.txt).
+> **decimal.js's own test suite passes unmodified against this Go build: 22658 of 22658 assertions** — the same count a clean upstream checkout produces.
+> Per-module table: [`results/parity.txt`](results/parity.txt). Test files are byte-for-byte upstream, hashed in [`tests/original/HASHES.txt`](tests/original/HASHES.txt).
+
+| | |
+|---|---|
+| **Parity** | 22658 / 22658 · 32658 / 32658 including a module upstream cannot run |
+| **Scope** | Complete — every method decimal.js exposes |
+| **Differential fuzz** | 279188 cases, 90 s, **zero divergences** |
+| **Upstream bug found** | [decimal.js#262](https://github.com/MikeMcl/decimal.js/issues/262), filed |
+| **Dependencies** | None beyond the Go standard library |
+| **Ported from** | decimal.js 10.6.0 at `cd73a7f` |
 
 ---
 
 ## What this is
 
-`decimaljs-go` is a standalone, dependency-free Go package that reproduces decimal.js's arbitrary-precision decimal arithmetic: the same results, the same rounding, the same edge cases (`NaN`, `±0`, `±Infinity`, configurable precision and rounding modes) — digit for digit.
+A standalone, dependency-free Go package reproducing decimal.js's arbitrary-precision decimal arithmetic: the same results, the same rounding, the same edge cases — `NaN`, `±0`, `±Infinity`, configurable precision and nine rounding modes — digit for digit.
 
-It is **not** a wrapper around a JavaScript engine and does **not** link the source-language runtime. All arithmetic is implemented in Go. The original JavaScript tests are used only as proof: they call into the Go build through a thin, test-only adapter, and not one byte of them is modified.
+It is not a wrapper around a JavaScript engine and does not link the source-language runtime. All arithmetic is implemented in Go. The original JavaScript tests serve only as proof: they call into the Go build through a test-only adapter, and not one byte of them is modified.
 
-- **Ported from:** decimal.js 10.6.0, commit `cd73a7f` (recorded in [`.port-mortem.toml`](.port-mortem.toml))
-- **Original license:** MIT · **This port's license:** MIT (see [`LICENSE`](LICENSE))
-- **Source language:** JavaScript · **Target:** Go 1.24+, no dependencies
+Licensed MIT, as is the original; [`LICENSE`](LICENSE) carries both notices.
 
 ## Why port it
 
-decimal.js is a widely used precision-arithmetic library with no direct Go equivalent. `shopspring/decimal`, the common Go choice, is fixed-point with a different configuration model — decimal places rather than significant-digit precision — which is a different design, not the same behaviour. A faithful port brings decimal.js's significant-digit precision model and its nine rounding modes to Go as a single dependency-free package, and lets the equivalence be *proven* rather than asserted.
+decimal.js is a widely used precision-arithmetic library with no direct Go equivalent. `shopspring/decimal`, the usual Go choice, is fixed-point with a different configuration model — decimal places rather than significant digits — which is a different design rather than the same behaviour expressed differently.
 
----
+A faithful port brings decimal.js's significant-digit precision model and its rounding semantics to Go as a single dependency-free package, and makes the equivalence provable instead of asserted.
 
-## Build and prove it
+## Build
 
-One command builds the library, the adapter and runs the proof. Both are
-verified — the numbers below come from a container run, not from a working tree:
+One command builds the library, the adapter, and runs the proof. Both commands below are verified; the numbers in this README come from a container run rather than a working tree.
 
 ```bash
-docker build -t decimaljs-go .    # vets, unit-tests, builds, smoke-tests the harness
-docker run --rm decimaljs-go      # runs decimal.js's suite against the Go build
+docker build -t decimaljs-go .    # vet, unit tests, adapter build, marshalling smoke test
+docker run --rm decimaljs-go      # decimal.js's suite against the Go build
 ```
 
 Locally:
 
 ```bash
-go test ./src/                                        # unit tests against generated expectations
+go test ./src/                                          # unit tests against generated expectations
 go build -o adapter/bin/decimald ./adapter/cmd/decimald
-node adapter/smoke.mjs                                # marshalling boundary, 27 checks
-node adapter/run-parity.mjs --all                     # the full original suite
-node fuzz/harness.mjs --seconds 60                    # differential fuzz vs decimal.js
+node adapter/smoke.mjs                                  # marshalling boundary, 27 checks
+node adapter/run-parity.mjs --all                       # the full original suite
+node fuzz/harness.mjs --seconds 60                      # differential fuzz against decimal.js
 ```
 
-The parity and fuzz runs need a decimal.js checkout at `./decimal.js` (the reference, gitignored) and Node. The library itself needs neither.
+The parity and fuzz runs need Node and a decimal.js checkout at `./decimal.js` (the reference, gitignored). The library itself needs neither.
 
 ## Usage
 
 ```go
 import decimal "github.com/ishadowfighter/decimaljs-go/src"
 
-x, err := decimal.Parse("0.1")          // exactly 0.1, not the float64 that literal denotes
-y := decimal.NewFromFloat(0.2)          // via the shortest round-tripping form, as decimal.js does
-fmt.Println(x.Add(y))                   // 0.3
+x, err := decimal.Parse("0.1")   // exactly 0.1, not the float64 that literal denotes
+y := decimal.NewFromFloat(0.2)   // via the shortest round-tripping form, as decimal.js does
+fmt.Println(x.Add(y))            // 0.3
 
-// A Context is decimal.js's Decimal.clone(): its own precision and rounding.
+// A Context is decimal.js's Decimal.clone(): its own precision and rounding mode.
 cfg := decimal.DefaultConfig()
 cfg.Precision = 50
 cfg.Rounding = decimal.RoundHalfEven
 ctx := decimal.NewContext(cfg)
 
 two, _ := ctx.Parse("2")
-fmt.Println(ctx.ValueOf(ctx.Sqrt(two))) // 1.4142135623730950488016887242096980785696718753769
+fmt.Println(ctx.ValueOf(ctx.Sqrt(two)))
+// 1.4142135623730950488016887242096980785696718753769
 
-ln, err := ctx.Ln(two)                  // errors where decimal.js throws
+r, err := ctx.Ln(two)            // errors where decimal.js throws
 ```
 
-The API is Go-shaped rather than a transliteration of the JavaScript one: methods take value receivers and return new values, `error` replaces `throw`, and configuration is a value instead of global mutable state. Behaviour still matches decimal.js exactly; where the two pulled in different directions, [`DECISIONS.md`](DECISIONS.md) records which won and why.
-
----
+The API is Go-shaped rather than a transliteration: value receivers returning new values, `error` in place of `throw`, configuration as a value instead of global mutable state. Behaviour still matches decimal.js exactly; where idiom and behaviour conflicted, [`DECISIONS.md`](DECISIONS.md) records which won.
 
 ## Scope
 
-**Everything is ported.** Every method decimal.js exposes has a Go equivalent, and every module of its test suite passes:
+Complete. Every method decimal.js exposes has a Go equivalent, and every module of its suite passes.
 
 | Area | Methods |
 |---|---|
@@ -85,36 +88,44 @@ The API is Go-shaped rather than a transliteration of the JavaScript one: method
 | Rounding | all nine modes; `Round` `Floor` `Ceil` `Trunc` `ToDecimalPlaces` `ToSignificantDigits` `ToNearest` |
 | Comparison | `Cmp` `Eq` `Gt` `Gte` `Lt` `Lte`, and every predicate |
 | Formatting | `String` `ValueOf` `MarshalJSON` `ToFixed` `ToExponential` `ToPrecision` `ToBinary` `ToOctal` `ToHexadecimal` `ToFraction` |
-| Transcendental | `Sqrt` `Cbrt` `Exp` `Ln` `Log` `Log2` `Log10`, all six trigonometric, all six hyperbolic, `Atan2` `Hypot` |
+| Transcendental | `Sqrt` `Cbrt` `Exp` `Ln` `Log` `Log2` `Log10`, six trigonometric, six hyperbolic, `Atan2` `Hypot` |
 | Other | `Min` `Max` `Sum` `Clamp` `Random` `DecimalPlaces` `SignificantDigits` |
 
-**A 61st module, and why it is counted separately:** `tests/original/modules/powSqrt.js` cannot run *as shipped*. It loops on a free variable `total` that no version of `setup.js` defines, so it throws `ReferenceError` before its first assertion — on a clean upstream checkout as much as here — and upstream's own `test.js` does not list it among the 60 modules it executes. That is a defect in the original repository, filed as [MikeMcl/decimal.js#262](https://github.com/MikeMcl/decimal.js/issues/262). The test runner here supplies the missing counter rather than editing the vendored file, and the module then passes **10000 / 10000** against this port. Those assertions are kept out of the 22658 headline, because that number exists to be compared against the upstream baseline and upstream does not run this module. [`results/parity.txt`](results/parity.txt) reports both.
+### The 61st module
+
+`tests/original/modules/powSqrt.js` cannot run as shipped. It loops on a free variable `total` that no version of `setup.js` defines, so it throws `ReferenceError` before its first assertion — on a clean upstream checkout as much as here — and upstream's own `test.js` omits it from the 60 modules it executes.
+
+That is a defect in the original repository, filed as [decimal.js#262](https://github.com/MikeMcl/decimal.js/issues/262). The test runner here supplies the missing counter rather than editing the vendored file, and the module then passes **10000 / 10000**.
+
+Those assertions are deliberately excluded from the 22658 headline: that figure exists to be compared against the upstream baseline, and upstream does not run this module. [`results/parity.txt`](results/parity.txt) reports both totals.
 
 ## Proving equivalence
 
-decimal.js's tests live under [`tests/original/`](tests/original/), unmodified, with a SHA-256 per file in `HASHES.txt` and a single kickoff hash over that manifest in `.port-mortem.toml`. Verify at any time:
+decimal.js's tests live under [`tests/original/`](tests/original/) unmodified, with a SHA-256 per file in `HASHES.txt` and a single kickoff hash over that manifest in [`.port-mortem.toml`](.port-mortem.toml). Verify at any time:
 
 ```bash
-cd tests/original && sha256sum -c HASHES.txt
+cd tests/original && sha256sum -c HASHES.txt   # 69 files
 ```
 
-They run against the Go build through [`adapter/`](adapter/): a Go binary speaking one JSON request per line, and a JavaScript shim presenting decimal.js's surface that delegates each operation to it. `tests/original/setup.js` does `require('../decimal')`, which resolves to `tests/decimal.js` — outside the vendored tree — so the redirect needs no launch flag and no edit to a test file. The wire form carries each value's full internal state (`.d`, `.e`, `.s`), because the suite asserts on those directly and because `toString` cannot express the sign of negative zero.
+They execute against the Go build through [`adapter/`](adapter/): a Go binary speaking one JSON request per line, and a JavaScript shim presenting decimal.js's surface that delegates each operation to it. `tests/original/setup.js` does `require('../decimal')`, which resolves to `tests/decimal.js` — outside the vendored tree — so the redirect needs no launch flag and no edit to any test file.
 
-**Result: 22658 / 22658.** Baseline on a clean upstream checkout: 22658 / 22658.
+The wire form carries each value's full internal state (`.d`, `.e`, `.s`), because the suite asserts on those directly and because `toString` cannot express the sign of negative zero.
 
-Including `powSqrt.js`, which upstream cannot run and this harness can, the container run totals **32658 / 32658**.
+**Result: 22658 / 22658.** Baseline on a clean upstream checkout: 22658 / 22658. Including `powSqrt.js`, the container run totals **32658 / 32658**.
 
 ### Differential fuzzing
 
-[`fuzz/harness.mjs`](fuzz/harness.mjs) drives both implementations with the same random operands and configurations and compares the results. The recorded run in [`fuzz/log.txt`](fuzz/log.txt) is **279188 cases in 90 seconds with zero divergences** across 30 operations and seven precision/rounding combinations.
+[`fuzz/harness.mjs`](fuzz/harness.mjs) drives both implementations with identical random operands and configurations and compares results. The recorded run in [`fuzz/log.txt`](fuzz/log.txt): **279188 cases in 90 seconds, zero divergences**, across 30 operations and seven precision/rounding combinations, seeded so any divergence is replayable.
 
-decimal.js is the oracle, deliberately, and mpmath is not. The fuzzer decimal.js ships (`test/hypothesis/error_hunt.py`, mpmath as ground truth) does **not** pass on a clean upstream checkout: at `precision: 14`, `sin(6504783935)` is `5.5360303649386E-8` from decimal.js and `5.5360303649385E-8` from mpmath. A port whose contract is equivalence cannot use an oracle that disagrees with the thing it is meant to equal.
+decimal.js is the oracle rather than mpmath, deliberately. The fuzzer decimal.js ships (`test/hypothesis/error_hunt.py`, mpmath as ground truth) does not pass on a clean upstream checkout: at `precision: 14`, `sin(6504783935)` is `5.5360303649386E-8` from decimal.js and `5.5360303649385E-8` from mpmath. A port whose contract is equivalence cannot use an oracle that disagrees with the thing it must equal.
 
-Three operations have bounded operands in the fuzzer, and the harness says why: decimal.js itself runs out of memory on `exp(-3e15)` and is documented as abandoning `cosh` at a large argument, so an unbounded draw would measure patience rather than agreement.
+Five draws are bounded, with the reason recorded in the harness: decimal.js exhausts the V8 heap on `exp(-3e15)`, and its own source documents abandoning `cosh` at a large argument. Unbounded draws would measure patience rather than agreement.
 
 ## Performance
 
-Performance is a tiebreaker, and nothing here was optimised. Methodology and caveats are in [`bench/methodology.md`](bench/methodology.md); raw numbers in [`bench/results.json`](bench/results.json). At `precision: 34`, p99 latency, Windows/amd64, Go 1.26.3 vs Node 22.16.0:
+A tiebreaker, and nothing here was optimised for it. Methodology and caveats: [`bench/methodology.md`](bench/methodology.md). Raw numbers: [`bench/results.json`](bench/results.json).
+
+At `precision: 34`, p99 latency, Windows/amd64, Go 1.26.3 against Node 22.16.0 with decimal.js 10.6.0:
 
 | Operation | Go p99 | decimal.js p99 | Ratio |
 |---|---:|---:|---:|
@@ -130,43 +141,37 @@ Performance is a tiebreaker, and nothing here was optimised. Methodology and cav
 
 Startup, median of 15 runs: **17 ms** for the Go binary against **82 ms** for Node loading decimal.js.
 
-`toString` is genuinely slower and is left that way: the port builds output through `strings.Builder` and intermediate slices where V8 optimises string concatenation heavily, and tuning it would mean disturbing code whose behaviour is currently pinned digit for digit. An earlier version of this benchmark reported a p99 of exactly 20 µs for `add` — that was the Windows clock's resolution divided by a fixed batch size, not a measurement; the fix is described in the methodology.
-
----
+`toString` is genuinely slower and stays that way. The port builds output through `strings.Builder` and intermediate slices where V8 optimises string concatenation heavily; tuning it would disturb code whose behaviour is pinned digit for digit by 500 assertions per formatting method. An earlier version of this benchmark reported a p99 of exactly 20 µs for `add` — that was the Windows clock's resolution divided by a fixed batch size, not a measurement. The fix is described in the methodology.
 
 ## Bonus criteria
 
 | Criterion | Status |
 |---|---|
-| **Differential Fuzz Survivor** | Claimed — 279188 cases in 90 s, **zero divergences**, log at [`fuzz/log.txt`](fuzz/log.txt) |
-| **Zero Unsafe** | Claimed for the library — `src/` has no `unsafe`, no `reflect`, no cgo and no `any`; the 61 uses of `any` are in the test-only adapter's JSON boundary |
-| **Bug Catcher** | Filed — [MikeMcl/decimal.js#262](https://github.com/MikeMcl/decimal.js/issues/262): `powSqrt.js` throws `ReferenceError: total is not defined` on a clean upstream checkout and has never run. Made runnable here, and it passes 10000 / 10000 |
-| **Decision Log** | Claimed — 15 entries in [`DECISIONS.md`](DECISIONS.md), including three where the first attempt was wrong |
+| **Differential Fuzz Survivor** | 279188 cases, 90 s, zero divergences — [`fuzz/log.txt`](fuzz/log.txt) |
+| **Zero Unsafe** | `src/` contains no `unsafe`, `reflect`, cgo or `any`; the 61 uses of `any` are in the test-only adapter's JSON boundary, disclosed |
+| **Bug Catcher** | [decimal.js#262](https://github.com/MikeMcl/decimal.js/issues/262) filed — `powSqrt.js` has never run; made runnable here and passing 10000 / 10000 |
+| **Decision Log** | 17 entries in [`DECISIONS.md`](DECISIONS.md), four documenting a first attempt that was wrong |
 
-Evidence and caveats for each are at the end of [`DECISIONS.md`](DECISIONS.md).
+Evidence and caveats for each: the Bonus criteria section of [`DECISIONS.md`](DECISIONS.md).
 
 ## Layout
 
 ```
 decimaljs-go/
-├── src/                 the port (package decimal, no dependencies)
+├── src/                 the port — package decimal, no dependencies
 ├── tests/original/      decimal.js's tests, byte-for-byte, hashed
-├── tests/port/          generators that produce expectations from decimal.js
+├── tests/port/          generators producing expectations from decimal.js
 ├── adapter/             test-only bridge: Go line-protocol server + JS shim
 ├── fuzz/                differential fuzzer and its recorded run
 ├── bench/               methodology and measurements
-├── results/parity.txt   per-module pass table
+├── results/             parity table and the upstream issue as filed
 ├── DECISIONS.md         every non-trivial divergence and why
 └── Dockerfile           one command to a built, proven artifact
 ```
 
-Unit tests under `src/` compare against expectations generated from decimal.js itself by the scripts in `tests/port/`, across every rounding mode and a spread of precisions. Hand-written expectations would encode a reading of the source rather than its behaviour.
-
-Those generators produce exhaustive sweeps — 215334 lines of them. What is committed is a stride sample of roughly 500 lines per file, since the sweeps are this port's own output rather than an upstream fixture. Regenerating a full sweep needs no code change: the tests read whatever the file holds. See [tests/port/README.md](tests/port/README.md).
+The port's own tests are `src/*_test.go`, beside the code, because they exercise unexported internals — the limb array, the exponent, `finalise` itself. `tests/port/` holds the generators that produce their expected values by running decimal.js; the committed expectations are a stride sample of those sweeps. See [`tests/port/README.md`](tests/port/README.md).
 
 ## Credits
 
-- Original library: [decimal.js](https://github.com/MikeMcl/decimal.js) by Michael Mclaughlin (MIT).
-- Built for [Port Mortem / Code Resurrection](https://coderesurrection.com), a Hackathon Raptors event.
-
-See [`DECISIONS.md`](DECISIONS.md) for the engineering rationale behind each divergence.
+Original library: [decimal.js](https://github.com/MikeMcl/decimal.js) by Michael Mclaughlin, MIT.
+Built for [Port Mortem / Code Resurrection](https://coderesurrection.com), a Hackathon Raptors event.

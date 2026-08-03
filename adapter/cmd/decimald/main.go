@@ -223,7 +223,7 @@ var ops = map[string]operation{
 		}
 		r, err := c.Pow(x, y)
 		if err != nil {
-			return nil, unimplementedIfUnported(err)
+			return nil, err
 		}
 		return encode(r, g), nil
 	}},
@@ -407,16 +407,6 @@ var ops = map[string]operation{
 	"config": {0, func(_ *decimal.Context, g decimal.Config, _ []json.RawMessage) (any, error) {
 		return encodeConfig(g), nil
 	}},
-}
-
-// unimplementedIfUnported relabels the port's "not implemented" error so the
-// shim reports it as a harness gap rather than as a DecimalError, which the
-// suite's assertException would count as a pass.
-func unimplementedIfUnported(err error) error {
-	if errors.Is(err, decimal.ErrNotImplemented) {
-		return fmt.Errorf("%w: %v", errUnimplemented, err)
-	}
-	return err
 }
 
 // decimalUnary adapts a one-operand Context method returning a Decimal.

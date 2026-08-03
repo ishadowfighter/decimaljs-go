@@ -1,10 +1,35 @@
 # Decisions
 
-Every non-trivial fork in the road taken while porting decimal.js to Go, and
-why it was taken. Written as the work happens, not reconstructed afterwards.
+Every non-trivial fork in the road taken while porting decimal.js to Go, and why
+it was taken. Written as the work happened rather than reconstructed afterwards,
+which is why four entries record a first attempt that was wrong.
 
-Behaviour beats idiom: where an idiomatic Go choice would change an observable
-result, decimal.js's behaviour wins and the compromise is recorded here.
+The governing rule: **behaviour beats idiom.** Where an idiomatic Go choice would
+change an observable result, decimal.js's behaviour wins and the compromise is
+recorded here.
+
+| | Decision |
+|---|---|
+| D1 | [The baseline is decimal.js, not correctness](#d1--the-baseline-is-decimaljs-not-correctness) |
+| D2 | [The vendored tests are stored with upstream line endings](#d2--the-vendored-tests-are-stored-with-upstream-line-endings) |
+| D3 | [Licence carries both notices](#d3--licence-carries-both-notices) |
+| D4 | [Module path](#d4--module-path) |
+| D5 | [Configuration is a value, not global mutable state](#d5--configuration-is-a-value-not-global-mutable-state) |
+| D6 | [Every JavaScript `throw` becomes an error return](#d6--every-javascript-throw-becomes-an-error-return) |
+| D7 | [Values are immutable, and the coefficient is copied on the way out](#d7--values-are-immutable-and-the-coefficient-is-copied-on-the-way-out) |
+| D8 | [Math.pow's two ECMAScript-only cases are reimplemented](#d8--mathpows-two-ecmascript-only-cases-are-reimplemented) |
+| D9 | [`pow` keeps both of decimal.js's paths](#d9--pow-keeps-both-of-decimaljss-paths) |
+| D10 | [Where decimal.js stops rounding, and why it matters](#d10--where-decimaljs-stops-rounding-and-why-it-matters) |
+| D11 | [Two JavaScript idioms that carry meaning](#d11--two-javascript-idioms-that-carry-meaning) |
+| D12 | [Test data is generated from decimal.js, not written by hand](#d12--test-data-is-generated-from-decimaljs-not-written-by-hand) |
+| D13 | [The benchmark measured the clock, not the code](#d13--the-benchmark-measured-the-clock-not-the-code) |
+| D14 | [`toString` is slower, and stays slower](#d14--tostring-is-slower-and-stays-slower) |
+| D15 | [Bounded operands in the fuzzer, and why that is not cheating](#d15--bounded-operands-in-the-fuzzer-and-why-that-is-not-cheating) |
+| D16 | [A test in the original repo that has never run](#d16--a-test-in-the-original-repo-that-has-never-run) |
+| D17 | [The fix goes in the runner, because the test file is untouchable](#d17--the-fix-goes-in-the-runner-because-the-test-file-is-untouchable) |
+
+The [Bonus criteria](#bonus-criteria) section at the end states where the port
+stands against each of the four, with the evidence and the asterisks together.
 
 ---
 
@@ -97,19 +122,20 @@ wrapper rather than calling `math.Pow` directly. This is a real behavioural
 difference between the two languages' standard libraries, not a quirk of
 decimal.js.
 
-## D9 — Integer exponents only, for now
+## D9 — `pow` keeps both of decimal.js's paths
 
-`Pow` implements decimal.js's exact path: exponentiation by squaring for an
-integer exponent, including the guard-digit truncation and the trick of
-incrementing the last retained limb when digits were dropped, which keeps the
-truncated value strictly above the true one so the final rounding cannot fall
-the wrong way.
+An integer exponent takes the exact path: exponentiation by squaring, with the
+guard-digit truncation and the detail that makes it safe — when digits are
+dropped and the last retained limb is zero it is incremented, so the working
+value stays strictly above the true one and the final rounding cannot fall the
+wrong way.
 
-A fractional exponent needs `exp` and `ln`, which are Tier 2 and not ported yet.
-Rather than approximate it, `Pow` returns `ErrNotImplemented`. An exponent
-beyond the exact-integer range does the same, since that path also routes
-through the logarithm upstream. A reported gap is worth more than a wrong
-answer that looks like a result.
+Everything else is `exp(y * ln(x))` with guard digits, recomputed at higher
+precision when the result lands on a rounding boundary. Its exponent estimate is
+kept in a `float64` until it has been range-checked: for an exponent such as
+1e21 the estimate runs far past what an `int` can hold, and converting first
+wrapped it to the wrong sign, which turned an overflow to Infinity into a
+result of zero.
 
 ## D10 — Where decimal.js stops rounding, and why it matters
 
@@ -179,8 +205,8 @@ undisclosed risk to the thing that is actually being scored.
 
 ## D15 — Bounded operands in the fuzzer, and why that is not cheating
 
-Three operations draw from a restricted range: `pow`'s exponent, and the
-arguments to `exp`, `sinh`, `cosh` and `tanh`. The reason is upstream, not here.
+Five draws are restricted: `pow`'s exponent, and the arguments to `exp`, `sinh`,
+`cosh` and `tanh`. The reason is upstream, not here.
 decimal.js has no shortcut for `exp` below an exponent of 1e17, so `exp(-3e15)`
 exhausts the V8 heap before producing anything to compare against; `cosh` is
 documented in decimal.js's own source as having been abandoned after a

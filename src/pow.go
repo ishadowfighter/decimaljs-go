@@ -1,14 +1,9 @@
 package decimal
 
 import (
-	"fmt"
 	"math"
 	"strconv"
 )
-
-// ErrNotImplemented reports an operation this port does not yet cover. It is
-// returned rather than guessed at, so a gap can never be mistaken for a result.
-var ErrNotImplemented = fmt.Errorf("%w: not implemented in this port", Err)
 
 // one returns the Decimal 1.
 func one() Decimal {
