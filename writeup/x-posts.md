@@ -1,5 +1,7 @@
 # X posts — all under 280 characters
 
+**Posted:** https://x.com/ishadowfighter/status/2084295981173264632 (option A).
+
 The free tier caps a post at 280 characters. Everything below fits, counted with
 a link as 23 characters (X's fixed cost for any URL, however long).
 

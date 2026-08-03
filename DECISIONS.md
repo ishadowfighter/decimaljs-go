@@ -359,7 +359,7 @@ attempt was wrong, the oracle problem, and the adapter decision I would take
 back:
 
 **[I ported decimal.js to Go and ran its own 22,658 tests against the result.
-Four bugs were mine. One was theirs.](https://dev.to/aaravsharma1/i-ported-decimaljs-to-go-and-ran-its-own-22658-tests-against-the-result-four-bugs-were-mine-one-3d24)** — Dev.to
+Four bugs were mine. One was theirs.](https://dev.to/aaravsharma1/i-ported-decimaljs-to-go-and-ran-its-own-22658-tests-against-the-result-four-bugs-were-mine-one-3d24)** — Dev.to, also on [X](https://x.com/ishadowfighter/status/2084295981173264632)
 
 It covers D2 and D10 (the unrounded intermediate that changed `asin` in the last
 digit), D11 (the two opposite meanings JavaScript gives an absent array element),

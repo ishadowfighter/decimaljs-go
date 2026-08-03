@@ -176,10 +176,10 @@ The port's own tests are `src/*_test.go`, beside the code, because they exercise
 The story of the port — what broke, how equivalence was proven, the benchmark
 that measured the wrong thing, and the decision I would take back:
 
-**[I ported decimal.js to Go and ran its own 22,658 tests against the result. Four bugs were mine. One was theirs.](https://dev.to/aaravsharma1/i-ported-decimaljs-to-go-and-ran-its-own-22658-tests-against-the-result-four-bugs-were-mine-one-3d24)** — Dev.to
+**[I ported decimal.js to Go and ran its own 22,658 tests against the result. Four bugs were mine. One was theirs.](https://dev.to/aaravsharma1/i-ported-decimaljs-to-go-and-ran-its-own-22658-tests-against-the-result-four-bugs-were-mine-one-3d24)** — Dev.to · [X](https://x.com/ishadowfighter/status/2084295981173264632)
 
-Source of that post: [`writeup/devto.md`](writeup/devto.md). Short-form versions
-for X and LinkedIn: [`writeup/x-posts.md`](writeup/x-posts.md).
+Source of the post: [`writeup/devto.md`](writeup/devto.md). Short-form versions:
+[`writeup/x-posts.md`](writeup/x-posts.md).
 
 ## Credits
 
