@@ -82,5 +82,5 @@ digits.
 
 Ported to Go (JavaScript → Go, decimal.js 10.6.0 at `cd73a7f`), this module was
 run against the port by supplying the missing counter from the test runner
-rather than editing the file. It completes and every assertion passes, so the
+rather than editing the file. It completes and passes 10000 of 10000, so the
 defect is only that the file cannot start — the test itself is sound.

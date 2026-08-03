@@ -240,9 +240,17 @@ The module uses `total` purely as a loop bound, so nothing about what it checks
 changes — every assertion still runs against the port, and the originals still
 decide pass or fail. The wrappers only count.
 
+With the counter supplied, the module runs to completion and passes **10000 of
+10000** — ten thousand comparisons of `pow(0.5)` against `sqrt` at random
+precisions and rounding modes. That is worth two things: it is the strongest
+single cross-check this port has, and it is the evidence that the upstream test
+is sound and only its loop bound was broken.
+
 Its assertions stay outside the 22658 headline. Upstream's own runner does not
 execute this module, so folding them in would break the comparison against the
-baseline that number exists to make. It is reported on its own line instead.
+baseline that number exists to make. `results/parity.txt` reports both figures
+and the difference between them: 22658 against the baseline, 32658 including
+powSqrt.
 
 ---
 
@@ -315,7 +323,8 @@ Two things make this more than a typo report. The module is the only place in
 the suite that pits the series-based `exp`/`ln` path against the independent
 Newton-Raphson `sqrt`, so its silence has cost real coverage for as long as it
 has been there. And because the port can now run it, the report comes with
-evidence that the test itself is sound: RESULT_LINE
+evidence that the test itself is sound: with the missing counter supplied, it
+passes 10000 of 10000.
 
 ## Decision Log
 

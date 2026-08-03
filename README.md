@@ -29,7 +29,8 @@ decimal.js is a widely used precision-arithmetic library with no direct Go equiv
 
 ## Build and prove it
 
-One command builds the library, the adapter and runs the proof:
+One command builds the library, the adapter and runs the proof. Both are
+verified — the numbers below come from a container run, not from a working tree:
 
 ```bash
 docker build -t decimaljs-go .    # vets, unit-tests, builds, smoke-tests the harness
@@ -87,7 +88,7 @@ The API is Go-shaped rather than a transliteration of the JavaScript one: method
 | Transcendental | `Sqrt` `Cbrt` `Exp` `Ln` `Log` `Log2` `Log10`, all six trigonometric, all six hyperbolic, `Atan2` `Hypot` |
 | Other | `Min` `Max` `Sum` `Clamp` `Random` `DecimalPlaces` `SignificantDigits` |
 
-**One caveat, stated plainly:** `tests/original/modules/powSqrt.js` does not run *as shipped* — it fails with `total is not defined` on a clean upstream checkout too, because it loops on a global no version of `setup.js` defines, and upstream's own `test.js` does not include it in the 60 modules it executes. That is a defect in the original repository, filed as [MikeMcl/decimal.js#262](https://github.com/MikeMcl/decimal.js/issues/262). The test runner here supplies the missing counter rather than editing the vendored file, so the module does run against this port; its assertions stay outside the 22658 because upstream's runner does not execute it.
+**A 61st module, and why it is counted separately:** `tests/original/modules/powSqrt.js` cannot run *as shipped*. It loops on a free variable `total` that no version of `setup.js` defines, so it throws `ReferenceError` before its first assertion — on a clean upstream checkout as much as here — and upstream's own `test.js` does not list it among the 60 modules it executes. That is a defect in the original repository, filed as [MikeMcl/decimal.js#262](https://github.com/MikeMcl/decimal.js/issues/262). The test runner here supplies the missing counter rather than editing the vendored file, and the module then passes **10000 / 10000** against this port. Those assertions are kept out of the 22658 headline, because that number exists to be compared against the upstream baseline and upstream does not run this module. [`results/parity.txt`](results/parity.txt) reports both.
 
 ## Proving equivalence
 
@@ -100,6 +101,8 @@ cd tests/original && sha256sum -c HASHES.txt
 They run against the Go build through [`adapter/`](adapter/): a Go binary speaking one JSON request per line, and a JavaScript shim presenting decimal.js's surface that delegates each operation to it. `tests/original/setup.js` does `require('../decimal')`, which resolves to `tests/decimal.js` — outside the vendored tree — so the redirect needs no launch flag and no edit to a test file. The wire form carries each value's full internal state (`.d`, `.e`, `.s`), because the suite asserts on those directly and because `toString` cannot express the sign of negative zero.
 
 **Result: 22658 / 22658.** Baseline on a clean upstream checkout: 22658 / 22658.
+
+Including `powSqrt.js`, which upstream cannot run and this harness can, the container run totals **32658 / 32658**.
 
 ### Differential fuzzing
 
@@ -137,7 +140,7 @@ Startup, median of 15 runs: **17 ms** for the Go binary against **82 ms** for No
 |---|---|
 | **Differential Fuzz Survivor** | Claimed — 279188 cases in 90 s, **zero divergences**, log at [`fuzz/log.txt`](fuzz/log.txt) |
 | **Zero Unsafe** | Claimed for the library — `src/` has no `unsafe`, no `reflect`, no cgo and no `any`; the 61 uses of `any` are in the test-only adapter's JSON boundary |
-| **Bug Catcher** | Filed — [MikeMcl/decimal.js#262](https://github.com/MikeMcl/decimal.js/issues/262): `powSqrt.js` throws `ReferenceError: total is not defined` on a clean upstream checkout and has never run |
+| **Bug Catcher** | Filed — [MikeMcl/decimal.js#262](https://github.com/MikeMcl/decimal.js/issues/262): `powSqrt.js` throws `ReferenceError: total is not defined` on a clean upstream checkout and has never run. Made runnable here, and it passes 10000 / 10000 |
 | **Decision Log** | Claimed — 15 entries in [`DECISIONS.md`](DECISIONS.md), including three where the first attempt was wrong |
 
 Evidence and caveats for each are at the end of [`DECISIONS.md`](DECISIONS.md).

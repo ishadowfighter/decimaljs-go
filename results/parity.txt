@@ -1,20 +1,36 @@
 decimal.js's own test suite, unmodified, run against the Go port.
 
-  node adapter/run-parity.mjs --all
+  docker build -t decimaljs-go .
+  docker run --rm decimaljs-go
 
-Each module is the vendored file under tests/original/modules/, executed by
-node with `require('../decimal')` resolving to the adapter shim, which delegates
-every operation to the Go build over the line protocol in adapter/PROTOCOL.md.
-No file under tests/original/ is modified; their hashes are in
+This table is the container run: the image builds the port from source, vets it,
+runs the Go unit tests, builds the adapter and smoke-tests the marshalling
+boundary, then executes every module below. Running it on the host gives the
+same numbers.
+
+Each module is the vendored file under tests/original/modules/, executed by node
+with `require('../decimal')` resolving to the adapter shim, which delegates every
+operation to the Go build over the line protocol in adapter/PROTOCOL.md. No file
+under tests/original/ is modified; their hashes are in
 tests/original/HASHES.txt.
 
-Baseline for comparison: the same suite on a clean upstream checkout of
-cd73a7f passes 22658 of 22658.
+TWO NUMBERS, AND THE DIFFERENCE BETWEEN THEM
 
-powSqrt.js fails to run on a clean upstream checkout too, with
-"total is not defined", and is not in the list of modules upstream's own
-test.js executes. It is reported here rather than omitted.
+  22658  the comparable figure. A clean upstream checkout of cd73a7f passes
+         22658 of 22658, over the 60 modules its own test.js executes. This
+         port passes the same 22658.
 
+  32658  this table's total. It adds powSqrt.js, which upstream's test.js does
+         not list and which cannot run as shipped: it loops on a free variable
+         `total` that no version of setup.js defines, so it throws a
+         ReferenceError before its first assertion. Filed upstream as
+         MikeMcl/decimal.js#262. The test runner here supplies the missing
+         counter rather than editing the vendored file, and the module then
+         passes 10000 of 10000 - which is also the evidence that the test
+         itself is sound and only its loop bound was broken.
+
+Compare against the baseline with 22658; the extra 10000 are a bonus this port
+can run and upstream currently cannot.
 
 module              passed    total  note
 ----------------  --------  -------  ----
@@ -54,7 +70,7 @@ mod.js                1000     1000
 neg.js                 200      200  
 plus.js               1000     1000  
 pow.js                 108      108  
-powSqrt.js               0        0  error: total is not defined
+powSqrt.js           10000    10000  
 random.js             1000     1000  
 round.js               500      500  
 sign.js                 16       16  
@@ -80,5 +96,4 @@ toString.js            338      338
 trunc.js               100      100  
 valueOf.js              40       40  
 ----------------  --------  -------  ----
-total                22658    22658  1 module(s) stopped early
-
+total                32658    32658  
