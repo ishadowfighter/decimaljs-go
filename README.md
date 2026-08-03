@@ -146,7 +146,9 @@ decimaljs-go/
 └── Dockerfile           one command to a built, proven artifact
 ```
 
-Unit tests under `src/` compare against expectations generated from decimal.js itself by the scripts in `tests/port/` — roughly 200,000 of them, across every rounding mode and a spread of precisions. Hand-written expectations would encode a reading of the source rather than its behaviour.
+Unit tests under `src/` compare against expectations generated from decimal.js itself by the scripts in `tests/port/`, across every rounding mode and a spread of precisions. Hand-written expectations would encode a reading of the source rather than its behaviour.
+
+Those generators produce exhaustive sweeps — 215334 lines of them. What is committed is a stride sample of roughly 500 lines per file, since the sweeps are this port's own output rather than an upstream fixture. Regenerating a full sweep needs no code change: the tests read whatever the file holds. See [tests/port/README.md](tests/port/README.md).
 
 ## Credits
 

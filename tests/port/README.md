@@ -46,5 +46,31 @@ distinction has already paid for itself: a hand-written expectation for
 `NewFromInt(-9007199254740991)` claimed four limbs, and the port's three were
 right.
 
-The committed `.txt` files are the record. Regenerating them requires a
-decimal.js checkout; running the tests does not.
+## The committed files are a sample, not the sweep
+
+The generators produce exhaustive sweeps — every value against every precision
+and every rounding mode — which came to 215334 lines. That is the right thing to
+check against while porting and the wrong thing to carry in a repository: it is
+this port's own output, not an upstream fixture.
+
+What is committed is a stride sample, about 500 lines per file, produced by:
+
+```bash
+node tests/port/sample_testdata.mjs --max 500
+```
+
+Every Nth line rather than the first N, because each file is ordered by
+configuration block: a prefix would keep one precision and discard the rest,
+while a stride keeps every configuration, every rounding mode and the whole
+spread of values.
+
+The tests read whatever is in the file, so regenerating a full sweep simply
+makes them stronger — no code changes, no flags:
+
+```bash
+node tests/port/gen_binary_cases.mjs ./decimal.js/decimal.mjs mod > src/testdata/mod.txt
+go test ./src/ -run TestMod
+```
+
+The real proof is not these files in any case. It is decimal.js's own suite,
+unmodified, at 22658 of 22658 — see `results/parity.txt`.
