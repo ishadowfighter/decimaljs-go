@@ -1,0 +1,254 @@
+{
+  "measured_at": "2026-08-03",
+  "methodology": "bench/methodology.md",
+  "precision": 34,
+  "samples_per_op": 400,
+  "environment": {
+    "go": "go go1.26.3",
+    "goos": "windows",
+    "goarch": "amd64",
+    "node": "v22.16.0",
+    "decimaljs": "10.6.0"
+  },
+  "operations": [
+    {
+      "op": "parse",
+      "go": {
+        "batch_size": 65536,
+        "mean_ns": 366,
+        "p50_ns": 340,
+        "p99_ns": 679,
+        "max_ns": 740,
+        "ops_per_sec": 2735750,
+        "alloc_bytes_per_op": 144
+      },
+      "decimaljs": {
+        "batch_size": 32768,
+        "mean_ns": 1619,
+        "p50_ns": 1444,
+        "p99_ns": 3796,
+        "max_ns": 6294,
+        "ops_per_sec": 617615
+      },
+      "go_speedup_mean": 4.43,
+      "go_speedup_p99": 5.59
+    },
+    {
+      "op": "add",
+      "go": {
+        "batch_size": 32768,
+        "mean_ns": 712,
+        "p50_ns": 686,
+        "p99_ns": 1112,
+        "max_ns": 4148,
+        "ops_per_sec": 1404169,
+        "alloc_bytes_per_op": 209
+      },
+      "decimaljs": {
+        "batch_size": 16384,
+        "mean_ns": 1947,
+        "p50_ns": 1830,
+        "p99_ns": 3443,
+        "max_ns": 5010,
+        "ops_per_sec": 513717
+      },
+      "go_speedup_mean": 2.73,
+      "go_speedup_p99": 3.1
+    },
+    {
+      "op": "sub",
+      "go": {
+        "batch_size": 32768,
+        "mean_ns": 744,
+        "p50_ns": 721,
+        "p99_ns": 1518,
+        "max_ns": 2095,
+        "ops_per_sec": 1344578,
+        "alloc_bytes_per_op": 209
+      },
+      "decimaljs": {
+        "batch_size": 16384,
+        "mean_ns": 1983,
+        "p50_ns": 1833,
+        "p99_ns": 3870,
+        "max_ns": 6076,
+        "ops_per_sec": 504269
+      },
+      "go_speedup_mean": 2.67,
+      "go_speedup_p99": 2.55
+    },
+    {
+      "op": "mul",
+      "go": {
+        "batch_size": 32768,
+        "mean_ns": 783,
+        "p50_ns": 753,
+        "p99_ns": 1196,
+        "max_ns": 6916,
+        "ops_per_sec": 1276924,
+        "alloc_bytes_per_op": 257
+      },
+      "decimaljs": {
+        "batch_size": 8192,
+        "mean_ns": 2584,
+        "p50_ns": 2424,
+        "p99_ns": 5095,
+        "max_ns": 9036,
+        "ops_per_sec": 386966
+      },
+      "go_speedup_mean": 3.3,
+      "go_speedup_p99": 4.26
+    },
+    {
+      "op": "div",
+      "go": {
+        "batch_size": 8192,
+        "mean_ns": 4485,
+        "p50_ns": 4450,
+        "p99_ns": 6021,
+        "max_ns": 6624,
+        "ops_per_sec": 222955,
+        "alloc_bytes_per_op": 1358
+      },
+      "decimaljs": {
+        "batch_size": 4096,
+        "mean_ns": 7700,
+        "p50_ns": 6631,
+        "p99_ns": 32233,
+        "max_ns": 39984,
+        "ops_per_sec": 129872
+      },
+      "go_speedup_mean": 1.72,
+      "go_speedup_p99": 5.35
+    },
+    {
+      "op": "sqrt",
+      "go": {
+        "batch_size": 1024,
+        "mean_ns": 25834,
+        "p50_ns": 25259,
+        "p99_ns": 36624,
+        "max_ns": 224443,
+        "ops_per_sec": 38709,
+        "alloc_bytes_per_op": 5829
+      },
+      "decimaljs": {
+        "batch_size": 128,
+        "mean_ns": 41391,
+        "p50_ns": 36280,
+        "p99_ns": 182351,
+        "max_ns": 353720,
+        "ops_per_sec": 24160
+      },
+      "go_speedup_mean": 1.6,
+      "go_speedup_p99": 4.98
+    },
+    {
+      "op": "ln",
+      "go": {
+        "batch_size": 128,
+        "mean_ns": 155229,
+        "p50_ns": 148027,
+        "p99_ns": 360446,
+        "max_ns": 901719,
+        "ops_per_sec": 6442,
+        "alloc_bytes_per_op": 37096
+      },
+      "decimaljs": {
+        "batch_size": 64,
+        "mean_ns": 222753,
+        "p50_ns": 203106,
+        "p99_ns": 549545,
+        "max_ns": 922020,
+        "ops_per_sec": 4489
+      },
+      "go_speedup_mean": 1.43,
+      "go_speedup_p99": 1.52
+    },
+    {
+      "op": "exp",
+      "go": {
+        "batch_size": 128,
+        "mean_ns": 157967,
+        "p50_ns": 153905,
+        "p99_ns": 307644,
+        "max_ns": 325828,
+        "ops_per_sec": 6330,
+        "alloc_bytes_per_op": 32682
+      },
+      "decimaljs": {
+        "batch_size": 128,
+        "mean_ns": 260700,
+        "p50_ns": 239694,
+        "p99_ns": 685384,
+        "max_ns": 815070,
+        "ops_per_sec": 3836
+      },
+      "go_speedup_mean": 1.65,
+      "go_speedup_p99": 2.23
+    },
+    {
+      "op": "sin",
+      "go": {
+        "batch_size": 256,
+        "mean_ns": 93846,
+        "p50_ns": 93048,
+        "p99_ns": 135529,
+        "max_ns": 142523,
+        "ops_per_sec": 10656,
+        "alloc_bytes_per_op": 27448
+      },
+      "decimaljs": {
+        "batch_size": 64,
+        "mean_ns": 282206,
+        "p50_ns": 270413,
+        "p99_ns": 509341,
+        "max_ns": 849922,
+        "ops_per_sec": 3544
+      },
+      "go_speedup_mean": 3.01,
+      "go_speedup_p99": 3.76
+    },
+    {
+      "op": "toString",
+      "go": {
+        "batch_size": 32768,
+        "mean_ns": 1205,
+        "p50_ns": 1162,
+        "p99_ns": 2133,
+        "max_ns": 2299,
+        "ops_per_sec": 829626,
+        "alloc_bytes_per_op": 233
+      },
+      "decimaljs": {
+        "batch_size": 32768,
+        "mean_ns": 653,
+        "p50_ns": 604,
+        "p99_ns": 1321,
+        "max_ns": 2585,
+        "ops_per_sec": 1531461
+      },
+      "go_speedup_mean": 0.54,
+      "go_speedup_p99": 0.62
+    }
+  ],
+  "startup": {
+    "go_binary": {
+      "runs": 15,
+      "median_ms": 16.6831,
+      "min_ms": 15.6153,
+      "max_ms": 26.6515
+    },
+    "node_decimaljs": {
+      "runs": 15,
+      "median_ms": 82.4204,
+      "min_ms": 77.266,
+      "max_ms": 96.8006
+    }
+  },
+  "memory": {
+    "note": "self-reported after the benchmark workload; Go reports runtime.MemStats.Sys, Node reports rss",
+    "go_sys_kb": 21618,
+    "node_rss_kb": 49692
+  }
+}

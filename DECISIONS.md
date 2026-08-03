@@ -149,3 +149,43 @@ would encode a reading of the source rather than its behaviour, and the point of
 the exercise is equivalence. Where a hand-written expectation did slip in, it
 was wrong and the port was right — `NewFromInt(-9007199254740991)` was expected
 to have four limbs and has three.
+
+## D13 — The benchmark measured the clock, not the code
+
+The first benchmark run reported a p99 of exactly 20 µs for `add` — suspiciously
+round, and wrong. The Windows wall clock advances in steps of roughly a
+millisecond, and the harness was timing a fixed batch of 50 operations: 1 ms
+divided by 50 is 20 µs, so the number was the clock's resolution rather than the
+port's latency. Earlier still, with no batching at all, every fast operation
+reported 0 ns.
+
+Each operation now grows its batch until a single sample spans at least 20 ms,
+and the batch size it settled on is recorded next to every measurement in
+`bench/results.json`. Both implementations use the same rule, so the comparison
+is not between two different clocks.
+
+## D14 — `toString` is slower, and stays slower
+
+The port is faster than decimal.js on nine of the ten benchmarked operations and
+slower on `toString`, at about 0.62× at p99. The cause is known: the port builds
+its output through `strings.Builder` and intermediate slices where decimal.js
+concatenates JavaScript strings, which V8 optimises heavily.
+
+It is left alone. Formatting is the code whose behaviour is pinned most tightly
+by the vendored suite — 500 assertions per formatting method, plus the exponent
+thresholds — and a rewrite for speed would put that at risk for a benchmark that
+is explicitly a tiebreaker. A disclosed regression is worth more than an
+undisclosed risk to the thing that is actually being scored.
+
+## D15 — Bounded operands in the fuzzer, and why that is not cheating
+
+Three operations draw from a restricted range: `pow`'s exponent, and the
+arguments to `exp`, `sinh`, `cosh` and `tanh`. The reason is upstream, not here.
+decimal.js has no shortcut for `exp` below an exponent of 1e17, so `exp(-3e15)`
+exhausts the V8 heap before producing anything to compare against; `cosh` is
+documented in decimal.js's own source as having been abandoned after a
+two-minute wait at 1e7. Left unbounded, the fuzzer would spend its budget
+waiting on the reference implementation rather than comparing results.
+
+The restriction is in the harness with the reasoning next to it, so it can be
+lifted and re-run by anyone who wants to.
