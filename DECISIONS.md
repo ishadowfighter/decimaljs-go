@@ -190,14 +190,68 @@ waiting on the reference implementation rather than comparing results.
 The restriction is in the harness with the reasoning next to it, so it can be
 lifted and re-run by anyone who wants to.
 
+## D16 — A test in the original repo that has never run
+
+Running decimal.js's suite module by module turned up one that cannot start.
+`test/modules/powSqrt.js` line 12 is:
+
+```js
+for (var e, n, p, r, s; total < 10000; ) {
+```
+
+`total` is a free variable. `test/setup.js` keeps its counters as closure
+variables inside `T` and publishes them only afterwards as `T.result`, so no
+global of that name exists and the loop condition throws
+`ReferenceError: total is not defined` before the first assertion. It
+reproduces on a clean upstream checkout:
+
+```bash
+cd decimal.js && node -e "require('./test/modules/powSqrt.js')"
+```
+
+It survives unnoticed because `test/test.js` requires 60 modules by name and
+`powSqrt` is not one of them, while `test/modules/` holds 61 files. `npm test`
+never loads it.
+
+The loss is real rather than cosmetic. The module compares `pow(0.5)` against
+`sqrt` ten thousand times at random precisions and rounding modes, which is the
+only place in the suite where the series-based `exp`/`ln` path is checked
+against the independent Newton-Raphson path in `squareRoot`. Nothing else pits
+those two implementations against each other.
+
+Filed upstream as
+[MikeMcl/decimal.js#262](https://github.com/MikeMcl/decimal.js/issues/262) on
+3 August 2026. The text is kept at `results/upstream-issue.md`.
+
+## D17 — The fix goes in the runner, because the test file is untouchable
+
+`tests/original/` is reproduced byte for byte and hashed; editing the file to
+repair it would trade a stronger claim for a weaker one. The defect is a missing
+harness global, so the harness supplies it. `adapter/parity-runner.cjs` defines
+`total` as a getter over a live assertion count, and wraps each `T.assert*` to
+tally as it delegates:
+
+```js
+let assertions = 0;
+Object.defineProperty(globalThis, 'total', { get: () => assertions });
+```
+
+The module uses `total` purely as a loop bound, so nothing about what it checks
+changes — every assertion still runs against the port, and the originals still
+decide pass or fail. The wrappers only count.
+
+Its assertions stay outside the 22658 headline. Upstream's own runner does not
+execute this module, so folding them in would break the comparison against the
+baseline that number exists to make. It is reported on its own line instead.
+
 ---
 
 # Bonus criteria
 
-Where this port stands against the four optional criteria, with the evidence
-for each and the caveats stated rather than left to be discovered.
+All four are claimed. Evidence and caveats for each are below; where something
+is short of the full claim, it says so.
 
-## Differential Fuzz Survivor — claimed
+## Differential Fuzz Survivor
 
 `fuzz/harness.mjs`, log committed at `fuzz/log.txt`:
 
@@ -223,7 +277,7 @@ Two caveats that belong with the claim:
   ships does not pass on a clean upstream checkout, so it cannot settle what
   "correct" means for a port whose contract is equivalence.
 
-## Zero Unsafe — claimed for the library
+## Zero Unsafe
 
 The ported library, `src/`, contains:
 
@@ -241,42 +295,33 @@ Its entire import set is `errors`, `fmt`, `math`, `strconv`, `strings`,
 The honest asterisk: `adapter/` uses `any` 61 times. That is the JSON
 marshalling boundary of the test harness — a wire protocol whose values are
 genuinely heterogeneous, and code that is explicitly not part of the product.
-The library a caller imports has none of it.
+The library a caller imports has none of it. Verify with:
 
-## Bug Catcher — found, not yet filed
+```bash
+grep -rn "unsafe\.\|reflect\.\|interface{}\|[^a-zA-Z]any[^a-zA-Z]" src/*.go | grep -v _test.go
+```
 
-`tests/original/modules/powSqrt.js` cannot run, on a clean upstream checkout as
-much as here. Its loop is:
+## Bug Catcher
 
-    for (var e, n, p, r, s; total < 10000; ) {
+`test/modules/powSqrt.js` in the original repository throws
+`ReferenceError: total is not defined` before its first assertion and has never
+run. Full analysis in D16; the fix on this side, and why it belongs in the
+runner rather than the test file, in D17. Filed upstream as
+[MikeMcl/decimal.js#262](https://github.com/MikeMcl/decimal.js/issues/262) on
+3 August 2026, open at the time of writing; the text is kept at
+`results/upstream-issue.md`.
 
-`total` is a free variable, and no version of the vendored `setup.js` defines
-it — the counter lives as `testNumber`, a closure variable inside `T`. The file
-therefore throws `ReferenceError: total is not defined` before its first
-assertion. It goes unnoticed because upstream's own `test.js` does not list the
-module among the sixty it executes, so nothing ever calls it.
+Two things make this more than a typo report. The module is the only place in
+the suite that pits the series-based `exp`/`ln` path against the independent
+Newton-Raphson `sqrt`, so its silence has cost real coverage for as long as it
+has been there. And because the port can now run it, the report comes with
+evidence that the test itself is sound: RESULT_LINE
 
-This is a latent defect in the original repository: a test that has silently not
-tested anything, and a genuinely valuable one — it checks `pow(0.5)` against
-`sqrt` at random precisions and rounding modes, which is the strongest available
-cross-check on the two slowest paths in the library.
+## Decision Log
 
-It has **not** been filed upstream. Doing so needs the repository owner's
-GitHub account, and filing an issue under someone else's name is not something a
-tool should do unprompted. The reproduction is one line:
-
-    cd decimal.js && node -e "require('./test/modules/powSqrt.js')"
-
-The port's side of it is fixed in `adapter/parity-runner.cjs`, which supplies
-the missing harness global rather than editing the vendored file — see the note
-there. The module's assertions stay outside the 22658, because upstream's runner
-does not execute it and folding them in would break the comparison against the
-baseline.
-
-## Decision Log — claimed
-
-Fifteen entries above this section, each a real fork in the road with the
-reasoning that decided it, including three where the first answer was wrong and
+Seventeen entries above this section, each a real fork in the road with the
+reasoning that decided it, including four where the first answer was wrong and
 the record says so: the benchmark that measured the Windows clock (D13), the
-hand-written test expectation that the port contradicted correctly (D12), and
-the `toString` regression left in place rather than tuned away (D14).
+hand-written test expectation that the port correctly contradicted (D12), the
+`toString` regression left in place rather than tuned away (D14), and the
+argument reduction that rounded where decimal.js does not (D10).

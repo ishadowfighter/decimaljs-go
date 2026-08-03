@@ -87,7 +87,7 @@ The API is Go-shaped rather than a transliteration of the JavaScript one: method
 | Transcendental | `Sqrt` `Cbrt` `Exp` `Ln` `Log` `Log2` `Log10`, all six trigonometric, all six hyperbolic, `Atan2` `Hypot` |
 | Other | `Min` `Max` `Sum` `Clamp` `Random` `DecimalPlaces` `SignificantDigits` |
 
-**One caveat, stated plainly:** `tests/original/modules/powSqrt.js` does not run — it fails with `total is not defined` on a clean upstream checkout too, and upstream's own `test.js` does not include it in the 60 modules it executes. It is reported in `results/parity.txt` rather than quietly dropped.
+**One caveat, stated plainly:** `tests/original/modules/powSqrt.js` does not run *as shipped* — it fails with `total is not defined` on a clean upstream checkout too, because it loops on a global no version of `setup.js` defines, and upstream's own `test.js` does not include it in the 60 modules it executes. That is a defect in the original repository, filed as [MikeMcl/decimal.js#262](https://github.com/MikeMcl/decimal.js/issues/262). The test runner here supplies the missing counter rather than editing the vendored file, so the module does run against this port; its assertions stay outside the 22658 because upstream's runner does not execute it.
 
 ## Proving equivalence
 
@@ -137,7 +137,7 @@ Startup, median of 15 runs: **17 ms** for the Go binary against **82 ms** for No
 |---|---|
 | **Differential Fuzz Survivor** | Claimed — 279188 cases in 90 s, **zero divergences**, log at [`fuzz/log.txt`](fuzz/log.txt) |
 | **Zero Unsafe** | Claimed for the library — `src/` has no `unsafe`, no `reflect`, no cgo and no `any`; the 61 uses of `any` are in the test-only adapter's JSON boundary |
-| **Bug Catcher** | Found, not filed — `powSqrt.js` throws `ReferenceError: total is not defined` on a clean upstream checkout and has never run; filing needs the repository owner's account |
+| **Bug Catcher** | Filed — [MikeMcl/decimal.js#262](https://github.com/MikeMcl/decimal.js/issues/262): `powSqrt.js` throws `ReferenceError: total is not defined` on a clean upstream checkout and has never run |
 | **Decision Log** | Claimed — 15 entries in [`DECISIONS.md`](DECISIONS.md), including three where the first attempt was wrong |
 
 Evidence and caveats for each are at the end of [`DECISIONS.md`](DECISIONS.md).
