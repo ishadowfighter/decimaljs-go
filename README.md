@@ -178,8 +178,8 @@ that measured the wrong thing, and the decision I would take back:
 
 **[I ported decimal.js to Go and ran its own 22,658 tests against the result. Four bugs were mine. One was theirs.](https://dev.to/aaravsharma1/i-ported-decimaljs-to-go-and-ran-its-own-22658-tests-against-the-result-four-bugs-were-mine-one-3d24)** — Dev.to · [X](https://x.com/ishadowfighter/status/2084295981173264632)
 
-Source of the post: [`writeup/devto.md`](writeup/devto.md). Short-form versions:
-[`writeup/x-posts.md`](writeup/x-posts.md).
+Tagged for Hackathon Raptors' Port Mortem 2026 write-up side quest. Sources:
+[`writeup/devto.md`](writeup/devto.md) and [`writeup/x-post.md`](writeup/x-post.md).
 
 ## Credits
 
