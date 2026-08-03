@@ -1,0 +1,9 @@
+# The build needs the library, the harness and the vendored tests, nothing else.
+.git
+.venv
+decimal.js
+adapter/bin
+bench
+fuzz
+results
+*.md

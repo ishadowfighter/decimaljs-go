@@ -21,6 +21,34 @@ if (!file) {
 let status = 'ok';
 let message = '';
 
+// powSqrt.js loops on a free variable named `total`, which no version of the
+// vendored setup.js defines: `for (...; total < 10000; )` throws a
+// ReferenceError before a single assertion runs, on this port and on a clean
+// upstream checkout alike. Upstream's own test.js does not list the module,
+// so nothing there notices.
+//
+// The missing piece is a harness global, not a defect in the test, and the
+// vendored file cannot be edited. So the runner supplies it: `total` reads the
+// live assertion count, which the module uses purely as a loop bound. Every
+// assertion it makes still runs for real.
+let assertions = 0;
+Object.defineProperty(globalThis, 'total', {
+  configurable: true,
+  get: () => assertions,
+});
+
+require(path.resolve(__dirname, '..', 'tests', 'original', 'setup.js'));
+
+// Count assertions as they happen. The wrappers only tally; the originals do
+// the deciding.
+for (const name of ['assert', 'assertEqual', 'assertEqualDecimal', 'assertEqualProps', 'assertException']) {
+  const original = T[name];
+  T[name] = function () {
+    assertions++;
+    return original.apply(this, arguments);
+  };
+}
+
 try {
   require(path.resolve(file));
 } catch (e) {

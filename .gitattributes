@@ -1,3 +1,15 @@
 # The reproduced decimal.js test suite must stay byte-for-byte identical to
 # upstream, so git must never translate its line endings in either direction.
 tests/original/** -text
+
+# It is also third-party code, not this port's, and at 2.4 MB it is most of the
+# repository by size. Marking it vendored keeps GitHub's language statistics
+# describing the port rather than the suite it is measured against. The files
+# themselves stay exactly where they are: they are the proof.
+tests/original/** linguist-vendored
+
+# Expected values produced by running decimal.js, not written by hand.
+src/testdata/** linguist-generated
+
+# The adapter, fuzzer and benchmark scripts are deliberately left counted. They
+# are JavaScript this port wrote, and hiding them would flatter the numbers.

@@ -26,3 +26,6 @@ __pycache__/
 *.py[cod]
 .hypothesis/
 .pytest_cache/
+
+# Intermediate half of the benchmark, merged into bench/results.json.
+bench/results.go.json
