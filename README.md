@@ -39,7 +39,7 @@ docker run --rm decimaljs-go      # runs decimal.js's suite against the Go build
 Locally:
 
 ```bash
-go test ./src/                                        # unit tests, ~200k generated expectations
+go test ./src/                                        # unit tests against generated expectations
 go build -o adapter/bin/decimald ./adapter/cmd/decimald
 node adapter/smoke.mjs                                # marshalling boundary, 27 checks
 node adapter/run-parity.mjs --all                     # the full original suite
