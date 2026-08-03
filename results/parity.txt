@@ -1,0 +1,84 @@
+decimal.js's own test suite, unmodified, run against the Go port.
+
+  node adapter/run-parity.mjs --all
+
+Each module is the vendored file under tests/original/modules/, executed by
+node with `require('../decimal')` resolving to the adapter shim, which delegates
+every operation to the Go build over the line protocol in adapter/PROTOCOL.md.
+No file under tests/original/ is modified; their hashes are in
+tests/original/HASHES.txt.
+
+Baseline for comparison: the same suite on a clean upstream checkout of
+cd73a7f passes 22658 of 22658.
+
+powSqrt.js fails to run on a clean upstream checkout too, with
+"total is not defined", and is not in the list of modules upstream's own
+test.js executes. It is reported here rather than omitted.
+
+
+module              passed    total  note
+----------------  --------  -------  ----
+Decimal.js             987      987  
+abs.js                 100      100  
+acos.js                 54       54  
+acosh.js                50       50  
+asin.js                 54       54  
+asinh.js                50       50  
+atan.js                 50       50  
+atan2.js               100      100  
+atanh.js                50       50  
+cbrt.js                 50       50  
+ceil.js                 50       50  
+clamp.js                29       29  
+clone.js                65       65  
+cmp.js                1000     1000  
+config.js              206      206  
+cos.js                 101      101  
+cosh.js                100      100  
+div.js                1000     1000  
+divToInt.js           1000     1000  
+dpSd.js                133      133  
+exp.js                 100      100  
+floor.js               100      100  
+hypot.js               100      100  
+immutability.js       3341     3341  
+intPow.js              500      500  
+isFiniteEtc.js         214      214  
+ln.js                  499      499  
+log.js                 200      200  
+log10.js               500      500  
+log2.js                200      200  
+minAndMax.js           110      110  
+minus.js              1000     1000  
+mod.js                1000     1000  
+neg.js                 200      200  
+plus.js               1000     1000  
+pow.js                 108      108  
+powSqrt.js               0        0  error: total is not defined
+random.js             1000     1000  
+round.js               500      500  
+sign.js                 16       16  
+sin.js                 100      100  
+sinh.js                100      100  
+sqrt.js               1000     1000  
+sum.js                  37       37  
+tan.js                 100      100  
+tanh.js                100      100  
+times.js              1000     1000  
+toBinary.js            327      327  
+toDP.js                500      500  
+toExponential.js       500      500  
+toFixed.js             500      500  
+toFraction.js          200      200  
+toHex.js               309      309  
+toNearest.js           157      157  
+toNumber.js             40       40  
+toOctal.js             293      293  
+toPrecision.js         500      500  
+toSD.js                500      500  
+toString.js            338      338  
+trunc.js               100      100  
+valueOf.js              40       40  
+----------------  --------  -------  ----
+total                22658    22658  1 module(s) stopped early
+

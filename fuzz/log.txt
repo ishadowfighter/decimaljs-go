@@ -1,0 +1,34 @@
+# differential fuzz: Go port vs decimal.js
+# seed 99, budget 90s, reference decimal.js\decimal.mjs
+
+# 279188 cases in 90.0s, 0 divergence(s)
+#   acos       9424
+#   acosh      9283
+#   add        9200
+#   asin       9308
+#   asinh      9236
+#   atan       9274
+#   atanh      9226
+#   cbrt       9409
+#   cos        9356
+#   cosh       9237
+#   div        9412
+#   divToInt   9268
+#   exp        9329
+#   floor      9469
+#   ln         9206
+#   mod        9395
+#   mul        9005
+#   pow        9217
+#   round      9324
+#   sin        9343
+#   sinh       9279
+#   sqrt       9474
+#   sub        9377
+#   tan        9230
+#   tanh       9409
+#   toBinary   9339
+#   toHex      9259
+#   toString   9150
+#   trunc      9381
+#   valueOf    9369

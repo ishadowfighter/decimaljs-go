@@ -259,6 +259,17 @@ function clone(settings) {
 
   P.toNumber = function () { return Number(this.valueOf()); };
 
+  P.toFraction = function (maxD) {
+    const Ctor = this.constructor;
+    // decimal.js tests `maxD == null`, so null and undefined both mean absent.
+    const absent = maxD === undefined || maxD === null;
+    const pair = call(Ctor, 'toFraction', [wire(this), absent ? 'absent' : operand(maxD)]);
+    // decimal.js returns a single Decimal for a non-finite value and a pair
+    // otherwise; the two states are told apart by the numerator being finite.
+    const n = fromState(Ctor, pair[0]);
+    return n.d === null ? n : [n, fromState(Ctor, pair[1])];
+  };
+
   P.toBinary = baseFormatter('toBinary');
   P.toOctal = baseFormatter('toOctal');
   P.toHexadecimal = P.toHex = baseFormatter('toHex');
@@ -455,7 +466,7 @@ const ROUNDING_MODES = [
 // decimal.js's full prototype surface minus the part the port has reached. Every
 // alias is listed separately because the suite calls both spellings.
 const UNIMPLEMENTED_METHODS = [
-  'toFraction',
+
 ];
 
 // decimal.js's static surface minus config, set, clone, sign and isDecimal.

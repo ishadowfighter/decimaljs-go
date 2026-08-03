@@ -354,6 +354,26 @@ var ops = map[string]operation{
 		return encode(r, g), nil
 	}},
 
+	// toFraction returns a pair, so its reply is an array of two decimals.
+	"toFraction": {2, func(c *decimal.Context, g decimal.Config, a []json.RawMessage) (any, error) {
+		x, err := construct(c, a[0])
+		if err != nil {
+			return nil, err
+		}
+		limitSet := strings.TrimSpace(string(a[1])) != `"absent"`
+		var limit decimal.Decimal
+		if limitSet {
+			if limit, err = construct(c, a[1]); err != nil {
+				return nil, err
+			}
+		}
+		num, den, err := c.ToFraction(x, limit, limitSet)
+		if err != nil {
+			return nil, err
+		}
+		return []any{encode(num, g), encode(den, g)}, nil
+	}},
+
 	// Digit counts. Both report NaN for a non-finite value, as decimal.js does.
 	"dp": {1, unary(func(d decimal.Decimal, _ decimal.Config) (any, error) {
 		if n, ok := d.DecimalPlaces(); ok {
