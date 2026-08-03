@@ -176,10 +176,12 @@ The port's own tests are `src/*_test.go`, beside the code, because they exercise
 The story of the port — what broke, how equivalence was proven, the benchmark
 that measured the wrong thing, and the decision I would take back:
 
-- Dev.to: _link once published_ · draft at [`writeup/devto.md`](writeup/devto.md)
-- X: _link once published_ · draft at [`writeup/x-thread.md`](writeup/x-thread.md)
+**[I ported decimal.js to Go and ran its own 22,658 tests against the result. Four bugs were mine. One was theirs.](https://dev.to/aaravsharma1/i-ported-decimaljs-to-go-and-ran-its-own-22658-tests-against-the-result-four-bugs-were-mine-one-3d24)** — Dev.to
+
+Source of that post: [`writeup/devto.md`](writeup/devto.md). Short-form versions
+for X and LinkedIn: [`writeup/x-posts.md`](writeup/x-posts.md).
 
 ## Credits
 
 Original library: [decimal.js](https://github.com/MikeMcl/decimal.js) by Michael Mclaughlin, MIT.
-Built for [Port Mortem / Code Resurrection](https://coderesurrection.com), a Hackathon Raptors event.
+Built for [Port Mortem / Code Resurrection](https://coderesurrection.com/2026), a Hackathon Raptors event.

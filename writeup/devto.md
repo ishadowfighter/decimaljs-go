@@ -1,6 +1,6 @@
 ---
 title: "I ported decimal.js to Go and ran its own 22,658 tests against the result. Four bugs were mine. One was theirs."
-published: false
+published: true
 description: "Porting is the easy half. Proving the port behaves identically is where the work is — and where the interesting failures live."
 tags: go, javascript, testing, showdev
 canonical_url:
@@ -252,4 +252,4 @@ I should have paid the portability cost up front for a persistent process, or ru
 
 **Repo:** [github.com/ishadowfighter/decimaljs-go](https://github.com/ishadowfighter/decimaljs-go) — 22,658/22,658, full parity table, fuzz log, benchmark methodology, and a `DECISIONS.md` with 17 entries including the four above where I was wrong first.
 
-Built for [Port Mortem / Code Resurrection](https://coderesurrection.com) by Hackathon Raptors.
+Built for [Port Mortem / Code Resurrection](https://coderesurrection.com/2026) by Hackathon Raptors.

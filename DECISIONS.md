@@ -358,8 +358,15 @@ Published account of the port, covering the four entries above where the first
 attempt was wrong, the oracle problem, and the adapter decision I would take
 back:
 
-- Dev.to: _link once published_ · draft at `writeup/devto.md`
-- X: _link once published_ · draft at `writeup/x-thread.md`
+**[I ported decimal.js to Go and ran its own 22,658 tests against the result.
+Four bugs were mine. One was theirs.](https://dev.to/aaravsharma1/i-ported-decimaljs-to-go-and-ran-its-own-22658-tests-against-the-result-four-bugs-were-mine-one-3d24)** — Dev.to
+
+It covers D2 and D10 (the unrounded intermediate that changed `asin` in the last
+digit), D11 (the two opposite meanings JavaScript gives an absent array element),
+D13 (the benchmark that reported the Windows clock's resolution as latency), D16
+and D17 (the upstream test that had never run), and the adapter decision I would
+take back. Source at `writeup/devto.md`; short-form versions at
+`writeup/x-posts.md`.
 
 ## Decision Log
 
